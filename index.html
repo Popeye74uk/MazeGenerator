@@ -6,7 +6,7 @@
     <title>Maze Generator v0.10</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
-        :root{--color-background:#f8f9fa;--color-container-bg:#f8f9fa;--color-text-primary:#333;--color-text-secondary:#6c757d;--color-heading:#343a40;--color-grid-lines:#adb5bd;--color-grid-cell-bg:#fff;--color-button-disabled-bg:#6c757d;--color-spinner-track:#f3f3f3;--color-modal-bg:rgba(0,0,0,0.6);--color-modal-content-bg:white;--color-box-shadow:rgba(0,0,0,0.1);--color-box-shadow-hover:rgba(0,0,0,0.15);--color-primary:#007bff;--color-success:#28a745;--color-danger:#dc3545;--color-warning:#fd7e14;--color-info:#6f42c1;--color-pink:#d63384;--color-revealed-bg:rgba(40,167,69,0.3);--color-user-path-bg:rgba(0,123,255,0.3);--color-start-bg:var(--color-success);--color-end-bg:var(--color-danger);--color-cursor-shadow:rgba(0,123,255,0.7);--color-anim-current:rgba(220,53,69,0.5);--color-anim-frontier:rgba(253,126,20,0.4)}
+        :root{--color-background:#f8f9fa;--color-container-bg:#f8f9fa;--color-text-primary:#333;--color-text-secondary:#6c757d;--color-heading:#343a40;--color-grid-lines:#adb5bd;--color-grid-cell-bg:#fff;--color-button-disabled-bg:#6c757d;--color-spinner-track:#f3f3f3;--color-modal-bg:rgba(0,0,0,0.6);--color-modal-content-bg:white;--color-box-shadow:rgba(0,0,0,0.1);--color-box-shadow-hover:rgba(0,0,0,0.15);--color-primary:#007bff;--color-success:#28a745;--color-danger:#dc3545;--color-warning:#fd7e14;--color-info:#6f42c1;--color-pink:#d63384;--color-revealed-bg:rgba(40,167,69,0.3);--color-user-path-bg:rgba(0,123,255,0.3);--color-start-bg:var(--color-success);--color-end-bg:var(--color-danger);--color-cursor-shadow:rgba(0,123,255,0.7);--color-anim-visited:rgba(111,66,193,0.3);--color-anim-path:rgba(253,126,20,0.4)}
         body.dark-mode{--color-background:#121212;--color-container-bg:#1e1e1e;--color-text-primary:#e0e0e0;--color-text-secondary:#888;--color-heading:#f1f1f1;--color-grid-lines:#444;--color-grid-cell-bg:#2a2a2a;--color-button-disabled-bg:#555;--color-spinner-track:#444;--color-modal-bg:rgba(0,0,0,0.8);--color-modal-content-bg:#2c2c2c;--color-box-shadow:rgba(0,0,0,0.3);--color-box-shadow-hover:rgba(0,0,0,0.4);--color-revealed-bg:rgba(40,167,69,0.4);--color-user-path-bg:rgba(0,123,255,0.4);--color-cursor-shadow:rgba(50,150,255,0.7)}
         body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:16px;color:var(--color-text-primary);background-color:var(--color-background);padding:20px;margin:0;display:flex;justify-content:center;align-items:flex-start;min-height:100vh;transition:background-color .3s,color .3s}
         .container{width:100%;max-width:900px;margin:0 auto}
@@ -26,9 +26,8 @@
         #grid div.solution-path{background-color:var(--color-revealed-bg)}
         #grid div.user-path{background-color:var(--color-user-path-bg)}
         #grid div.keyboard-cursor{box-shadow:inset 0 0 0 3px var(--color-cursor-shadow)}
-        #grid div.anim-current{background-color:var(--color-anim-current)!important}
-        #grid div.anim-frontier{background-color:var(--color-anim-frontier)!important}
-        #grid div.anim-path{background-color:var(--color-user-path-bg)!important}
+        #grid div.anim-visited{background-color:var(--color-anim-visited)!important}
+        #grid div.anim-path{background-color:var(--color-anim-path)!important}
         body.dark-mode .loader{background-color:var(--color-background)}
         .loader{position:absolute;top:0;left:0;right:0;bottom:0;background-color:var(--color-container-bg);display:flex;justify-content:center;align-items:center;flex-direction:column;gap:15px;z-index:10;font-size:1.1em;color:var(--color-text-secondary);border-radius:4px}
         .loader.hidden{opacity:0;pointer-events:none}
@@ -187,7 +186,7 @@
 
 
         <div id="status-container"><p id="source-status"></p></div>
-        <div id="version-info">v0.9</div>
+        <div id="version-info">v0.10</div>
     </div>
 
     <div id="completion-modal" onclick="hideCompletionModal()">
@@ -230,15 +229,13 @@
             animateGenCheckbox: document.getElementById('animate-gen-checkbox')
         };
         
-        // --- SEEDED RNG ---
         function cyrb128(str) { let h1=1779033703,h2=3144134277,h3=1013904242,h4=2773480762; for (let i=0,k;i<str.length;i++){k=str.charCodeAt(i);h1=h2^Math.imul(h1^k,597399067);h2=h3^Math.imul(h2^k,2869860233);h3=h4^Math.imul(h3^k,951274213);h4=h1^Math.imul(h4^k,2716044179)} h1=Math.imul(h3^(h1>>>18),597399067);h2=Math.imul(h4^(h2>>>22),2869860233);h3=Math.imul(h1^(h3>>>17),951274213);h4=Math.imul(h2^(h4>>>19),2716044179); return(h1^h2^h3^h4)>>>0 }
         function mulberry32(a){ return function(){let t=a+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296} }
         
-        // --- MAZE GENERATION & CORE LOGIC ---
         function triggerGeneratePuzzle(isDebounced = false) { clearTimeout(debounceTimeout); debounceTimeout = setTimeout(() => generatePuzzle(), isDebounced ? 400 : 20); }
 
         async function generatePuzzle(isForBook = false) {
-            animationToken++; // Invalidate any previous animations
+            animationToken++; 
             isAnimating = ui.animateGenCheckbox.checked && !isForBook;
 
             gridSize = parseInt(ui.gridSizeSelect.value, 10);
@@ -255,20 +252,22 @@
             await new Promise(resolve => setTimeout(resolve, 30));
 
             try {
-                let mazeGrid;
+                let mazeGrid, animationSteps = [];
                 currentGridState = createEmptyGrid(gridSize, gridSize);
-                if(isAnimating) {
+                
+                switch(mazeType) {
+                    case 'prim': [mazeGrid, animationSteps] = generateMazePrim(gridSize, gridSize); break;
+                    case 'binary': [mazeGrid, animationSteps] = generateMazeBinaryTree(gridSize, gridSize); break;
+                    case 'kruskal': [mazeGrid, animationSteps] = generateMazeKruskal(gridSize, gridSize); break;
+                    case 'wilsons': [mazeGrid, animationSteps] = generateMazeWilsons(gridSize, gridSize); break;
+                    default: [mazeGrid, animationSteps] = generateMazeRecursiveBacktracker(gridSize, gridSize); break;
+                }
+                
+                if (isAnimating) {
                     ui.grid.innerHTML = '';
                     updateGridDisplay();
                     document.getElementById('grid-wrapper').style.visibility = 'visible';
-                }
-
-                switch(mazeType) {
-                    case 'prim': mazeGrid = await generateMazePrim(gridSize, gridSize); break;
-                    case 'binary': mazeGrid = await generateMazeBinaryTree(gridSize, gridSize); break;
-                    case 'kruskal': mazeGrid = await generateMazeKruskal(gridSize, gridSize); break;
-                    case 'wilsons': mazeGrid = await generateMazeWilsons(gridSize, gridSize); break;
-                    default: mazeGrid = await generateMazeRecursiveBacktracker(gridSize, gridSize); break;
+                    await runAnimation(animationToken, animationSteps);
                 }
                 
                 startCoords = { x: 0, y: 0 };
@@ -289,9 +288,7 @@
 
                 return { grid: mazeGrid, solution: path, title: `Maze ${gridSize}x${gridSize}` };
             } catch (error) {
-                if (error.message !== "Animation cancelled") {
-                    ui.status.textContent = `Error: ${error.message}`; console.error(error);
-                }
+                if (error.message !== "Animation cancelled") { ui.status.textContent = `Error: ${error.message}`; console.error(error); }
                 return null;
             } finally {
                 isAnimating = false;
@@ -299,29 +296,28 @@
             }
         }
         
-        // --- ALGORITHMS ---
-        const BATCH_DELAY = 16; // roughly 60fps
         function createEmptyGrid(width, height) { return Array(height).fill(null).map((_, y) => Array(width).fill(null).map((_, x) => ({ x, y, walls: [true, true, true, true], visited: false }))); }
         function getNeighbors(cell, grid, allDirs = false) { const { x, y } = cell; const neighbors = []; const directions = [{x:0, y:-1}, {x:1, y:0}, {x:0, y:1}, {x:-1, y:0}]; for (const dir of directions) { const nX = x + dir.x, nY = y + dir.y; if (nX >= 0 && nX < grid[0].length && nY >= 0 && nY < grid.length) { const neighbor = grid[nY][nX]; if(allDirs || !neighbor.visited) neighbors.push(neighbor); } } return neighbors; }
         function removeWall(a, b) { const dX = a.x - b.x, dY = a.y - b.y; if (dX === 1) { a.walls[3] = false; b.walls[1] = false; } else if (dX === -1) { a.walls[1] = false; b.walls[3] = false; } if (dY === 1) { a.walls[0] = false; b.walls[2] = false; } else if (dY === -1) { a.walls[2] = false; b.walls[0] = false; } }
 
-        async function animationBatch(token, updates) { if (isAnimating && token === animationToken) { updates.forEach(cell => updateCellDisplay(cell)); await new Promise(r => setTimeout(r, BATCH_DELAY)); } else { throw new Error("Animation cancelled"); } }
-        async function generateMazeRecursiveBacktracker(w, h) { const grid = currentGridState; const stack = [grid[0][0]]; grid[0][0].visited = true; let updates = []; let batchSize = Math.max(1, Math.floor(w * h / 200)); while(stack.length > 0) { const current = stack.pop(); updates.push(current); const neighbors = getNeighbors(current, grid); if (neighbors.length > 0) { stack.push(current); const neighbor = neighbors[Math.floor(rng() * neighbors.length)]; removeWall(current, neighbor); neighbor.visited = true; stack.push(neighbor); updates.push(neighbor); } if (updates.length >= batchSize) { await animationBatch(animationToken, updates); updates = []; } } return grid; }
-        async function generateMazePrim(w,h) { const g = currentGridState; const f = []; const sX = Math.floor(rng()*w), sY = Math.floor(rng()*h); g[sY][sX].visited = true; getNeighbors(g[sY][sX], g, true).forEach(n => f.push(n)); let updates = []; let batchSize = Math.max(1, Math.floor(w*h/100)); while(f.length > 0) { const fI = Math.floor(rng()*f.length); const c = f.splice(fI, 1)[0]; updates.push(c); const iN = getNeighbors(c, g, true).filter(n => n.visited); if(iN.length > 0) { const N = iN[Math.floor(rng()*iN.length)]; removeWall(c, N); c.visited = true; updates.push(N); getNeighbors(c, g, true).filter(n => !n.visited).forEach(n => { if(!f.some(fr => fr.x === n.x && fr.y === n.y)) f.push(n); }); } if(updates.length >= batchSize) { await animationBatch(animationToken, updates); updates = []; } } return g; }
-        async function generateMazeBinaryTree(w,h) { const g = currentGridState; let updates = []; let batchSize = Math.max(1, Math.floor(w*h/100)); for(let y=0;y<h;y++){for(let x=0;x<w;x++){ const c=g[y][x]; updates.push(c); const n=[]; if(y>0)n.push(g[y-1][x]); if(x>0)n.push(g[y][x-1]); if(n.length>0){ const N=n[Math.floor(rng()*n.length)]; removeWall(c,N); updates.push(N); } if(updates.length >= batchSize) { await animationBatch(animationToken, updates); updates = []; } } } return g; }
-        async function generateMazeKruskal(w, h) { const g = currentGridState; const e = []; const s = []; for(let y=0;y<h;y++){for(let x=0;x<w;x++){ s[y*w+x] = y*w+x; if(y>0)e.push({c1:g[y][x], c2:g[y-1][x]}); if(x>0)e.push({c1:g[y][x], c2:g[y][x-1]})}} for(let i=e.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[e[i],e[j]]=[e[j],e[i]]} const find=i=>s[i]===i?i:(s[i]=find(s[i])); const union=(i,j)=>{const rI=find(i),rJ=find(j);if(rI!==rJ)s[rI]=rJ}; for(const edge of e){ const {c1, c2} = edge; const n1=c1.y*w+c1.x, n2=c2.y*w+c2.x; if(find(n1)!==find(n2)){ removeWall(c1,c2); union(n1,n2); if(isAnimating) { updateCellDisplay(c1); updateCellDisplay(c2); await new Promise(r=>setTimeout(r,0)); } }} return g; }
-        async function generateMazeWilsons(w, h) { const g = currentGridState; const u = []; g.forEach(r => r.forEach(c => u.push(c))); const fC = u.splice(Math.floor(rng()*u.length),1)[0]; fC.visited = true; if(isAnimating) updateCellDisplay(fC); while(u.length > 0) { let c = u[Math.floor(rng()*u.length)]; let p = [c]; while(!c.visited) { if(isAnimating) { p.forEach(cell => cell.domElement.classList.add('anim-path')); await new Promise(r=>setTimeout(r,0)); p.forEach(cell => cell.domElement.classList.remove('anim-path')); } const n = getNeighbors(c, g, true); c = n[Math.floor(rng()*n.length)]; const pI = p.findIndex(cell=>cell.x===c.x&&cell.y===c.y); if(pI!==-1){p.splice(pI+1)}else{p.push(c)}} for(let i=0;i<p.length-1;i++){ removeWall(p[i],p[i+1]); p[i].visited=true; if(isAnimating) { updateCellDisplay(p[i]); updateCellDisplay(p[i+1]); } const uI = u.findIndex(cell=>cell.x===p[i].x&&cell.y===p[i].y); if(uI!==-1) u.splice(uI,1);}} return g; }
-
+        function generateMazeRecursiveBacktracker(w,h){const g=createEmptyGrid(w,h);const s=[g[0][0]];g[0][0].visited=!0;const a=[];while(s.length>0){const c=s.pop();const n=getNeighbors(c,g);if(n.length>0){s.push(c);const N=n[Math.floor(rng()*n.length)];removeWall(c,N);N.visited=!0;s.push(N);a.push({c1:c,c2:N})}}return[g,a]}
+        function generateMazePrim(w,h){const g=createEmptyGrid(w,h);const f=[];const sX=Math.floor(rng()*w),sY=Math.floor(rng()*h);g[sY][sX].visited=!0;const a=[{c1:g[sY][sX],type:'visit'}];getNeighbors(g[sY][sX],g,!0).forEach(n=>f.push(n));while(f.length>0){const fI=Math.floor(rng()*f.length);const c=f.splice(fI,1)[0];const iN=getNeighbors(c,g,!0).filter(n=>n.visited);if(iN.length>0){const N=iN[Math.floor(rng()*iN.length)];removeWall(c,N);c.visited=!0;a.push({c1:c,c2:N});getNeighbors(c,g,!0).filter(n=>!n.visited).forEach(n=>{if(!f.some(fr=>fr.x===n.x&&fr.y===n.y))f.push(n)})}}return[g,a]}
+        function generateMazeBinaryTree(w,h){const g=createEmptyGrid(w,h);const a=[];for(let y=0;y<h;y++){for(let x=0;x<w;x++){const c=g[y][x];const n=[];if(y>0)n.push(g[y-1][x]);if(x>0)n.push(g[y][x-1]);if(n.length>0){const N=n[Math.floor(rng()*n.length)];removeWall(c,N);a.push({c1:c,c2:N})}}}return[g,a]}
+        function generateMazeKruskal(w,h){const g=createEmptyGrid(w,h);const e=[];const s=[];const a=[];for(let y=0;y<h;y++){for(let x=0;x<w;x++){s[y*w+x]=y*w+x;if(y>0)e.push({c1:g[y][x],c2:g[y-1][x]});if(x>0)e.push({c1:g[y][x],c2:g[y][x-1]})}}for(let i=e.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[e[i],e[j]]=[e[j],e[i]]}const find=i=>s[i]===i?i:(s[i]=find(s[i]));const union=(i,j)=>{const rI=find(i),rJ=find(j);if(rI!==rJ)s[rI]=rJ};for(const edge of e){const{c1,c2}=edge;const n1=c1.y*w+c1.x,n2=c2.y*w+c2.x;if(find(n1)!==find(n2)){removeWall(c1,c2);union(n1,n2);a.push({c1,c2})}}return[g,a]}
+        function generateMazeWilsons(w,h){const g=createEmptyGrid(w,h);const u=[];g.forEach(r=>r.forEach(c=>u.push(c)));const fC=u.splice(Math.floor(rng()*u.length),1)[0];fC.visited=!0;const a=[{c1:fC,type:'visit'}];while(u.length>0){let c=u[Math.floor(rng()*u.length)];let p=[c];while(!c.visited){const n=getNeighbors(c,g,!0);c=n[Math.floor(rng()*n.length)];const pI=p.findIndex(cell=>cell.x===c.x&&cell.y===c.y);if(pI!==-1){p.splice(pI+1)}else{p.push(c)}}for(let i=0;i<p.length-1;i++){removeWall(p[i],p[i+1]);p[i].visited=!0;a.push({c1:p[i],c2:p[i+1],type:'path'});const uI=u.findIndex(cell=>cell.x===p[i].x&&cell.y===p[i].y);if(uI!==-1)u.splice(uI,1)}}return[g,a]}
+        
         function findSolutionPath(grid, start, end) { const queue = [[start]]; const visited = new Set([`${start.x},${start.y}`]); while(queue.length > 0) { const path = queue.shift(); const { x, y } = path[path.length - 1]; if (x === end.x && y === end.y) return path; const cell = grid[y][x]; const directions = [{x:0, y:-1}, {x:1, y:0}, {x:0, y:1}, {x:-1, y:0}]; for (let i = 0; i < directions.length; i++) { if (!cell.walls[i]) { const nX = x + directions[i].x, nY = y + directions[i].y; const key = `${nX},${nY}`; if (!visited.has(key)) { visited.add(key); queue.push([...path, {x: nX, y: nY}]); } } } } return []; }
         function setUiLoading(isLoading, message = '') { document.querySelectorAll('button, select, input').forEach(b=>b.disabled=isLoading); ui.loader.classList.toggle('hidden',!isLoading); ui.loaderText.textContent=message; document.getElementById('cancel-btn').style.display='none'; }
         
-        function updateCellDisplay(cell) { const { x, y, walls } = cell; if (!cell.domElement) cell.domElement = ui.grid.querySelector(`[data-x='${x}'][data-y='${y}']`); cell.domElement.className = ''; if (walls[0]) cell.domElement.classList.add('wall-top'); if (walls[1]) cell.domElement.classList.add('wall-right'); if (walls[2]) cell.domElement.classList.add('wall-bottom'); if (walls[3]) cell.domElement.classList.add('wall-left'); if (x === startCoords?.x && y === startCoords?.y) cell.domElement.classList.add('start-cell'); if (x === endCoords?.x && y === endCoords?.y) cell.domElement.classList.add('end-cell'); }
+        function updateCellDisplay(cell) { const { x, y, walls } = cell; if (!cell.domElement) cell.domElement = ui.grid.querySelector(`[data-x='${x}'][data-y='${y}']`); if (!cell.domElement) return; cell.domElement.className = ''; if (walls[0]) cell.domElement.classList.add('wall-top'); if (walls[1]) cell.domElement.classList.add('wall-right'); if (walls[2]) cell.domElement.classList.add('wall-bottom'); if (walls[3]) cell.domElement.classList.add('wall-left'); if (x === startCoords?.x && y === startCoords?.y) cell.domElement.classList.add('start-cell'); if (x === endCoords?.x && y === endCoords?.y) cell.domElement.classList.add('end-cell'); }
         function updateGridDisplay() { ui.grid.innerHTML=''; const pW=Math.min(document.getElementById('puzzle-container').clientWidth,800); let cS=Math.floor(pW/gridSize); cS=Math.max(2,cS); ui.grid.style.gridTemplateColumns=`repeat(${gridSize},${cS}px)`; ui.grid.style.gridTemplateRows=`repeat(${gridSize},${cS}px)`; const wW=Math.max(1,Math.floor(cS/12)); document.getElementById('dynamic-grid-styles').innerHTML=`#grid div.wall-top{border-top-width:${wW}px;border-top-style:solid}#grid div.wall-right{border-right-width:${wW}px;border-right-style:solid}#grid div.wall-bottom{border-bottom-width:${wW}px;border-bottom-style:solid}#grid div.wall-left{border-left-width:${wW}px;border-left-style:solid}#grid div.keyboard-cursor{box-shadow:inset 0 0 0 ${Math.max(2,wW+1)}px var(--color-cursor-shadow)}`; for(let y=0;y<gridSize;y++){for(let x=0;x<gridSize;x++){const c=document.createElement('div');c.dataset.x=x;c.dataset.y=y;const cD=currentGridState[y][x];cD.domElement = c; updateCellDisplay(cD); ui.grid.appendChild(c)}}redrawUserPath()}
         function redrawUserPath() { document.querySelectorAll('#grid div.user-path,#grid div.keyboard-cursor').forEach(c=>{c.classList.remove('user-path','keyboard-cursor')}); userPath.forEach(p=>{const c=ui.grid.querySelector(`[data-x='${p.x}'][data-y='${p.y}']`);if(c)c.classList.add('user-path')}); if(userPath.length>0){const lP=userPath[userPath.length-1];const cC=ui.grid.querySelector(`[data-x='${lP.x}'][data-y='${lP.y}']`);if(cC)cC.classList.add('keyboard-cursor')}}
+        
+        async function runAnimation(token, steps) { const batchSize = Math.ceil(steps.length / (gridSize > 50 ? 200 : 100)); for (let i = 0; i < steps.length; i += batchSize) { if (token !== animationToken) throw new Error("Animation cancelled"); const batch = steps.slice(i, i + batchSize); batch.forEach(step => { if (step.c1) updateCellDisplay(step.c1); if (step.c2) updateCellDisplay(step.c2); if (step.type === 'visit' && step.c1.domElement) step.c1.domElement.classList.add('anim-visited'); if (step.type === 'path' && step.c1.domElement) step.c1.domElement.classList.add('anim-path'); }); await new Promise(r => requestAnimationFrame(r)); batch.forEach(step => { if (step.c1?.domElement) step.c1.domElement.classList.remove('anim-visited', 'anim-path'); }); } }
         function revealSolution() { if(solutionPath.length === 0 || isAnimating) return; isAnimating = true; ui.revealBtn.disabled = true; let i = 0; const currentToken = ++animationToken; function animate() { if (i < solutionPath.length && currentToken === animationToken) { const pos = solutionPath[i]; const cell = ui.grid.querySelector(`[data-x='${pos.x}'][data-y='${pos.y}']`); if(cell) cell.classList.add('solution-path'); i++; requestAnimationFrame(animate); } else { isAnimating = false; } } animate(); }
         
         function showBookOptions() { ui.mainControls.style.display='none';ui.generateBookControls.style.display='block';ui.globalOptions.style.display='none'}
-        function resetBookUI() { ui.mainControls.style.display='grid';ui.generateBookControls.style.display='grid';ui.globalOptions.style.display='grid'}
+        function resetBookUI() { ui.mainControls.style.display='grid';ui.generateBookControls.style.display='none';ui.globalOptions.style.display='grid'}
         function downloadPdf() { if(currentGridState.length===0){alert("Please generate a maze first.");return} const{jsPDF}=window.jspdf; const d=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'}); drawMazeOnPdfPage(d,{grid:currentGridState,solution:solutionPath,title:'Maze'},false,null,false); d.save(`Maze-${gridSize}x${gridSize}-${ui.mazeTypeSelect.value}.pdf`)}
         async function downloadBook() { const pC=parseInt(document.getElementById('puzzle-count-input').value,10); if(isNaN(pC)||pC<1||pC>100){alert("Please enter a number between 1 and 100.");return} const iAK=document.getElementById('answer-key-checkbox').checked; const iPN=document.getElementById('page-numbers-checkbox').checked; const bT=document.getElementById('book-title-input').value.trim(); const bS=document.getElementById('book-subtitle-input').value.trim(); ui.grid.innerHTML='';document.getElementById('instructions-container').style.visibility='hidden';isGeneratingBook=true;setUiLoading(true,"Preparing Book...");ui.loader.scrollIntoView({behavior:'smooth',block:'center'});document.getElementById('cancel-btn').style.display='block';document.getElementById('cancel-btn').disabled=false; const{jsPDF}=window.jspdf; const d=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'}); d.deletePage(1);const aPD=[]; try{ if(bT){d.addPage();const pW=d.internal.pageSize.getWidth(),pH=d.internal.pageSize.getHeight();d.setFont('helvetica','bold').setFontSize(30).text(bT,pW/2,pH/2-10,{align:'center'});if(bS)d.setFont('helvetica','normal').setFontSize(16).text(bS,pW/2,pH/2+5,{align:'center'})} for(let i=1;i<=pC;i++){ if(!isGeneratingBook){throw new Error("Cancelled")} ui.loaderText.textContent=`Generating Maze ${i} of ${pC}...`; const pD=await generatePuzzle(true);pD.title=`Maze ${i}`;aPD.push(pD); d.addPage();drawMazeOnPdfPage(d,pD,false,i,iPN)} if(iAK&&aPD.length>0){ ui.loaderText.textContent="Generating Maze Solutions...";await new Promise(r=>setTimeout(r,50));drawMazeSolutions(d,aPD)} const sT=(bT.replace(/[^a-zA-Z0-9]/g,'-')||`Maze-Book-${pC}-Mazes`).substring(0,50);d.save(`${sT}.pdf`);ui.status.textContent="Book successfully generated!"} catch(e){ if(e.message==="Cancelled")ui.status.textContent="Book generation cancelled."; else ui.status.textContent=`Error: ${e.message}`} finally{isGeneratingBook=false;setUiLoading(false);resetBookUI();triggerGeneratePuzzle()}}
         function cancelBookGeneration() { isGeneratingBook=false; }
