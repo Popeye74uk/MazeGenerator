@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Maze Generator v0.2</title>
+    <title>Maze Generator v0.3</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         /* CSS Variables for Theming */
@@ -229,7 +229,7 @@
 
 
         <div id="status-container"><p id="source-status"></p></div>
-        <div id="version-info">v0.2</div>
+        <div id="version-info">v0.3</div>
     </div>
 
     <div id="completion-modal" onclick="hideCompletionModal()">
@@ -292,13 +292,15 @@
                 gridSize = parseInt(gridSizeSelect.value, 10);
                 const difficulty = difficultySelect.value;
                 
-                currentGridState = generateMaze(gridSize, gridSize, difficulty);
+                const mazeGrid = generateMaze(gridSize, gridSize, difficulty);
                 startCoords = { x: 0, y: 0 };
                 endCoords = { x: gridSize - 1, y: gridSize - 1 };
                 
-                solutionPath = findSolutionPath(startCoords, endCoords);
+                const path = findSolutionPath(mazeGrid, startCoords, endCoords);
 
                 if (!isForBook) {
+                    currentGridState = mazeGrid;
+                    solutionPath = path;
                     puzzleConfigKey = `${gridSize}-${difficulty}`;
                     statusElement.textContent = `Difficulty: ${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}`;
                     updateGridDisplay();
@@ -307,7 +309,7 @@
                     startTime = Date.now();
                 }
 
-                return { grid: currentGridState, solution: solutionPath, title: `Maze ${gridSize}x${gridSize}` };
+                return { grid: mazeGrid, solution: path, title: `Maze ${gridSize}x${gridSize}` };
 
             } catch (error) {
                 statusElement.textContent = `Error: ${error.message}`;
@@ -369,14 +371,14 @@
             else if (dY === -1) { a.walls[2] = false; b.walls[0] = false; }
         }
 
-        function findSolutionPath(start, end) {
+        function findSolutionPath(grid, start, end) {
             const queue = [[start]];
             const visited = new Set([`${start.x},${start.y}`]);
             while (queue.length > 0) {
                 const path = queue.shift();
                 const { x, y } = path[path.length - 1];
                 if (x === end.x && y === end.y) return path;
-                const cell = currentGridState[y][x];
+                const cell = grid[y][x];
                 const directions = [{x:0, y:-1}, {x:1, y:0}, {x:0, y:1}, {x:-1, y:0}];
                 for (let i = 0; i < directions.length; i++) {
                     if (!cell.walls[i]) {
@@ -454,7 +456,8 @@
             if (currentGridState.length === 0) { alert("Please generate a maze first."); return; }
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-            drawMazeOnPdfPage(doc, { grid: currentGridState, solution: solutionPath, title: 'Maze' }, true, null, false);
+            // The 'false' here ensures the solution is NOT drawn for a single PDF download.
+            drawMazeOnPdfPage(doc, { grid: currentGridState, solution: solutionPath, title: 'Maze' }, false, null, false);
             doc.save(`Maze-${gridSize}x${gridSize}-${difficultySelect.value}.pdf`);
         }
 
@@ -608,11 +611,11 @@
             if (userPath.length > 1 && userPath[userPath.length - 2].x === x && userPath[userPath.length - 2].y === y) {
                 userPath.pop();
             } else {
-                const currentCell = currentGridState[lastPos.y][lastPos.x];
+                const currentCellData = currentGridState[lastPos.y][lastPos.x];
                 const dX = x - lastPos.x, dY = y - lastPos.y;
                 if (Math.abs(dX) + Math.abs(dY) === 1) {
                     let wallIndex = dY === -1 ? 0 : dX === 1 ? 1 : dY === 1 ? 2 : 3;
-                    if (!currentCell.walls[wallIndex]) userPath.push({x, y});
+                    if (!currentCellData.walls[wallIndex]) userPath.push({x, y});
                 }
             }
             redrawUserPath();
