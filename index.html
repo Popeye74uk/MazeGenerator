@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Maze Generator v0.16</title>
+    <title>Maze Generator v0.18</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
-        :root{--color-background:#f8f9fa;--color-container-bg:#f8f9fa;--color-text-primary:#333;--color-text-secondary:#6c757d;--color-heading:#343a40;--color-grid-lines:#adb5bd;--color-grid-cell-bg:#fff;--color-button-disabled-bg:#6c757d;--color-spinner-track:#f3f3f3;--color-modal-bg:rgba(0,0,0,0.6);--color-modal-content-bg:white;--color-box-shadow:rgba(0,0,0,0.1);--color-box-shadow-hover:rgba(0,0,0,0.15);--color-primary:#007bff;--color-success:#28a745;--color-danger:#dc3545;--color-warning:#fd7e14;--color-info:#6f42c1;--color-pink:#d63384;--color-revealed-bg:rgba(40,167,69,0.3);--color-user-path-bg:rgba(0,123,255,0.3);--color-solved-path-bg:rgba(255,193,7,0.7);--color-start-bg:var(--color-success);--color-end-bg:var(--color-danger);--color-cursor-shadow:rgba(0,123,255,0.7);--color-star-icon:#ffc107;}
-        body.dark-mode{--color-background:#121212;--color-container-bg:#1e1e1e;--color-text-primary:#e0e0e0;--color-text-secondary:#888;--color-heading:#f1f1f1;--color-grid-lines:#444;--color-grid-cell-bg:#2a2a2a;--color-button-disabled-bg:#555;--color-spinner-track:#444;--color-modal-bg:rgba(0,0,0,0.8);--color-modal-content-bg:#2c2c2c;--color-box-shadow:rgba(0,0,0,0.3);--color-box-shadow-hover:rgba(0,0,0,0.4);--color-revealed-bg:rgba(40,167,69,0.4);--color-user-path-bg:rgba(0,123,255,0.4);--color-solved-path-bg:rgba(255,193,7,0.6);--color-cursor-shadow:rgba(50,150,255,0.7);--color-star-icon:#ffca2c;}
+        :root{--color-background:#f8f9fa;--color-container-bg:#f8f9fa;--color-text-primary:#333;--color-text-secondary:#6c757d;--color-heading:#343a40;--color-grid-lines:#adb5bd;--color-grid-cell-bg:#fff;--color-button-disabled-bg:#6c757d;--color-spinner-track:#f3f3f3;--color-modal-bg:rgba(0,0,0,0.6);--color-modal-content-bg:white;--color-box-shadow:rgba(0,0,0,0.1);--color-box-shadow-hover:rgba(0,0,0,0.15);--color-primary:#007bff;--color-success:#28a745;--color-danger:#dc3545;--color-warning:#fd7e14;--color-info:#6f42c1;--color-pink:#d63384;--color-revealed-bg:rgba(40,167,69,0.3);--color-backtrack-flash-bg:rgba(0,0,0,0.2);--color-user-path-bg:rgba(0,123,255,0.3);--color-solved-path-bg:rgba(255,193,7,0.7);--color-start-bg:var(--color-success);--color-end-bg:var(--color-danger);--color-cursor-shadow:rgba(0,123,255,0.7);--color-star-icon:#ffc107;}
+        body.dark-mode{--color-background:#121212;--color-container-bg:#1e1e1e;--color-text-primary:#e0e0e0;--color-text-secondary:#888;--color-heading:#f1f1f1;--color-grid-lines:#444;--color-grid-cell-bg:#2a2a2a;--color-button-disabled-bg:#555;--color-spinner-track:#444;--color-modal-bg:rgba(0,0,0,0.8);--color-modal-content-bg:#2c2c2c;--color-box-shadow:rgba(0,0,0,0.3);--color-box-shadow-hover:rgba(0,0,0,0.4);--color-revealed-bg:rgba(40,167,69,0.4);--color-backtrack-flash-bg:rgba(255,255,255,0.2);--color-user-path-bg:rgba(0,123,255,0.4);--color-solved-path-bg:rgba(255,193,7,0.6);--color-cursor-shadow:rgba(50,150,255,0.7);--color-star-icon:#ffca2c;}
         body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:16px;color:var(--color-text-primary);background-color:var(--color-background);padding:20px;margin:0;display:flex;justify-content:center;align-items:flex-start;min-height:100vh;transition:background-color .3s,color .3s}
         .container{width:100%;max-width:900px;margin:0 auto}
         .main-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
@@ -26,7 +26,8 @@
         #grid div.end-cell{background-color:var(--color-end-bg)}
         #grid div.end-cell.disabled{background-color:var(--color-text-secondary)}
         #grid div.solution-path{background-color:var(--color-revealed-bg)}
-        #grid div.solution-cursor{box-shadow: inset 0 0 0 100px rgba(255,255,255,0.3);}
+        #grid div.backtrack-flash{animation:flash .3s}
+        @keyframes flash{from{background-color:var(--color-backtrack-flash-bg)}to{background-color:var(--color-revealed-bg)}}
         #grid div.user-path{background-color:var(--color-user-path-bg)}
         #grid div.solved-path{background-color:var(--color-solved-path-bg)}
         #grid div.star-cell::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:70%;height:70%;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z' fill='%23ffc107'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:center;background-size:contain; z-index: 2;}
@@ -41,11 +42,9 @@
         #instructions-container h3{margin-top:0;color:var(--color-heading)}
         #instructions-list{list-style-position:inside;padding:0;margin:0 auto;display:inline-block;text-align:left}
         #instructions-list li{padding:4px 0;font-size:.95em;color:var(--color-text-primary)}
-        .controls-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px;max-width:415px;margin:25px auto 0}
-        .global-options-container{display:grid;grid-template-columns:1fr 1fr;gap:15px 25px;max-width:550px;margin:25px auto -10px;align-items:center}
-        .option-group{display:grid;grid-template-columns:4.5em 1fr;align-items:center;gap:10px}
-        .option-group label{font-weight:700;text-align:right}
-        .option-group select{width:100%;padding:8px;font-size:.9em;box-sizing:border-box;border:1px solid var(--color-grid-lines);border-radius:5px;height:40px}
+        .controls-wrapper { max-width: 415px; margin: 25px auto 0; }
+        .controls-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px;width:100%;}
+        .seed-container { margin-bottom: 15px; }
         .seed-group{display:flex;align-items:center;width:100%;height:40px;}
         #seed-input{flex-grow:1;border:1px solid var(--color-grid-lines);border-right:none;border-radius:5px 0 0 5px;padding:8px;font-size:.9em;height:100%;box-sizing:border-box;background-color:var(--color-grid-cell-bg);color:var(--color-text-primary)}
         body.dark-mode #seed-input{background-color:#fff;color:#000}
@@ -57,6 +56,7 @@
         button{padding:12px 20px;font-size:1em;font-weight:700;cursor:pointer;color:#fff;border:none;border-radius:5px;transition:all .2s;box-shadow:0 2px 4px var(--color-box-shadow);width:100%;box-sizing:border-box}
         button:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 4px 8px var(--color-box-shadow-hover)}
         button:disabled{background-color:var(--color-button-disabled-bg);cursor:not-allowed;opacity:.7}
+        #custom-maze-btn { background-color: #fd7e14; }
         #generate-btn{background-color:var(--color-primary)}
         #reveal-btn{background-color:var(--color-success)}
         #download-pdf-btn{background-color:var(--color-pink)}
@@ -64,6 +64,10 @@
         #create-book-btn{background-color:var(--color-danger)}
         #cancel-btn,#cancel-book-options-btn{background-color:var(--color-text-secondary)}
         #cancel-btn{min-width:120px;width:auto}
+        #custom-maze-options { display: none; flex-direction: column; gap: 15px; margin-top: 15px; }
+        .custom-option-group { display: grid; grid-template-columns: 80px 1fr; align-items: center; gap: 10px; }
+        .custom-option-group label { font-weight: 700; text-align: right; }
+        .custom-option-group select { width: 100%; padding: 8px; font-size: 0.9em; box-sizing: border-box; border: 1px solid var(--color-grid-lines); border-radius: 5px; height: 40px; }
         #generate-book-controls{display:none}
         .book-options-grid{display:grid;grid-template-columns:auto 1fr;justify-content:center;align-items:center;gap:10px 15px;margin:15px auto 0;max-width:415px}
         .book-options-grid label{text-align:right}
@@ -87,8 +91,8 @@
         .icon-sun,.icon-moon{display:none}
         body.dark-mode .icon-sun{display:block}
         body:not(.dark-mode) .icon-moon{display:block}
-        @media print{@page{size:A4;margin:.5in}body{background-color:#fff;font-size:12pt;margin:0;padding:0}.container{width:100%;margin:0;padding:0;box-shadow:none}.main-header,.global-options-container,.controls-grid,#generate-book-controls,#status-container,#game-mode-status,#version-info{display:none}#grid-wrapper{border:2px solid #333}#grid{border:none}#instructions-container{margin-top:15px}}
-        @media (max-width:768px){.book-options-grid{grid-template-columns:1fr}.book-options-grid label{text-align:left;margin-left:5px}.global-options-container{grid-template-columns:1fr}}
+        @media print{@page{size:A4;margin:.5in}body{background-color:#fff;font-size:12pt;margin:0;padding:0}.container{width:100%;margin:0;padding:0;box-shadow:none}#main-controls-wrapper, .controls-wrapper, #generate-book-controls,#status-container,#game-mode-status,#version-info, .main-header{display:none !important}#grid-wrapper{border:2px solid #333}#grid{border:none}#instructions-container{margin-top:15px; display: none !important;}}
+        @media (max-width:768px){.book-options-grid{grid-template-columns:1fr}.book-options-grid label{text-align:left;margin-left:5px}}
         @media (max-width:480px){.main-header h1{font-size:1.5em}#book-checkbox-options{flex-direction:column;align-items:flex-start;gap:12px}.modal-content h2{font-size:2em}.controls-grid{grid-template-columns:1fr}}
     </style>
     <style id="dynamic-grid-styles"></style>
@@ -123,55 +127,59 @@
             </ul>
         </div>
         
-        <div class="global-options-container" id="global-options-container">
-            <div class="option-group">
-                <label for="grid-size-select">Size:</label>
-                <select id="grid-size-select" onchange="triggerGeneratePuzzle()">
-                    <option value="15">15x15</option>
-                    <option value="20" selected>20x20</option>
-                    <option value="25">25x25</option>
-                    <option value="50">50x50</option>
-                    <option value="75">75x75</option>
-                    <option value="100">100x100</option>
-                </select>
-            </div>
-            <div class="option-group">
-                <label for="maze-type-select">Maze:</label>
-                <select id="maze-type-select" onchange="triggerGeneratePuzzle()">
-                    <option value="binary">Binary Tree (Easy)</option>
-                    <option value="prim">Prim's Algorithm</option>
-                    <option value="kruskal">Kruskal's Algorithm</option>
-                    <option value="backtracker" selected>DFS Backtracker (Hard)</option>
-                    <option value="wilsons">Wilson's Algorithm (Expert)</option>
-                </select>
-            </div>
-             <div class="option-group">
-                <label for="game-mode-select">Mode:</label>
-                <select id="game-mode-select" onchange="triggerGeneratePuzzle()">
-                    <option value="default">Start to End</option>
-                    <option value="longest_path">Longest Path</option>
-                    <option value="collect_stars">Collect the Stars</option>
-                    <option value="blindfold">Blindfold</option>
-                </select>
-            </div>
-            <div class="option-group">
-                <label for="seed-input">Seed:</label>
+        <div class="controls-wrapper" id="main-controls-wrapper">
+            <div class="seed-container">
                 <div class="seed-group">
-                    <input type="text" id="seed-input" placeholder="Enter seed and click Go">
+                    <input type="text" id="seed-input" placeholder="Enter seed or leave blank for random">
                     <button id="seed-go-btn" title="Generate with Seed">
                         <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg>
                     </button>
                     <button id="random-seed-btn" title="Random Seed">🎲</button>
                 </div>
             </div>
+            
+            <div class="controls-grid" id="main-controls">
+                <button id="generate-btn" onclick="triggerGeneratePuzzle(true)">New Random Maze</button>
+                <button id="custom-maze-btn">Custom Maze</button>
+                <button id="reveal-btn" onclick="revealSolution()">Reveal Solution</button>
+                <button id="download-pdf-btn" onclick="downloadPdf()">Download as PDF</button>
+                <button id="make-book-btn" onclick="showBookOptions()">Make Book</button>
+            </div>
+
+            <div id="custom-maze-options">
+                <div class="custom-option-group">
+                    <label for="grid-size-select">Size:</label>
+                    <select id="grid-size-select">
+                        <option value="15">15x15</option>
+                        <option value="20" selected>20x20</option>
+                        <option value="25">25x25</option>
+                        <option value="50">50x50</option>
+                        <option value="75">75x75</option>
+                        <option value="100">100x100</option>
+                    </select>
+                </div>
+                <div class="custom-option-group">
+                    <label for="maze-type-select">Maze:</label>
+                    <select id="maze-type-select">
+                        <option value="binary">Binary Tree (Easy)</option>
+                        <option value="prim">Prim's Algorithm</option>
+                        <option value="kruskal">Kruskal's Algorithm</option>
+                        <option value="backtracker" selected>DFS Backtracker (Hard)</option>
+                        <option value="wilsons">Wilson's Algorithm (Expert)</option>
+                    </select>
+                </div>
+                <div class="custom-option-group">
+                    <label for="game-mode-select">Mode:</label>
+                    <select id="game-mode-select">
+                        <option value="default">Start to End</option>
+                        <option value="longest_path">Longest Path</option>
+                        <option value="collect_stars">Collect the Stars</option>
+                        <option value="blindfold">Blindfold</option>
+                    </select>
+                </div>
+            </div>
         </div>
 
-        <div class="controls-grid" id="main-controls">
-            <button id="generate-btn" onclick="triggerGeneratePuzzle()">New Maze</button>
-            <button id="reveal-btn" onclick="revealSolution()">Reveal Solution</button>
-            <button id="download-pdf-btn" onclick="downloadPdf()">Download as PDF</button>
-            <button id="make-book-btn" onclick="showBookOptions()">Make Book</button>
-        </div>
 
         <div id="generate-book-controls">
             <h3>Make a Book</h3>
@@ -199,7 +207,7 @@
 
         <div id="status-container"><p id="source-status"></p></div>
         <div id="game-mode-status"></div>
-        <div id="version-info">v0.16</div>
+        <div id="version-info">v0.18</div>
     </div>
 
     <div id="completion-modal" onclick="hideCompletionModal()">
@@ -210,14 +218,14 @@
                 <p id="best-time"></p>
                 <p id="new-best-time"></p>
             </div>
-            <button onclick="triggerGeneratePuzzle()">Play Again?</button>
+            <button onclick="triggerGeneratePuzzle(true)">Play Again?</button>
         </div>
     </div>
     
     <script>
         // --- GLOBAL VARIABLES ---
         let gridSize = 20;
-        let currentGridState = [], solutionPath = [];
+        let currentGridState = [], solutionPath = [], currentSeed = '';
         let isGeneratingBook = false, isAnimating = false;
         let animationToken = 0; // Used to cancel running animations
         let debounceTimeout;
@@ -240,16 +248,17 @@
             seedInput: document.getElementById('seed-input'),
             seedGoBtn: document.getElementById('seed-go-btn'),
             randomSeedBtn: document.getElementById('random-seed-btn'),
-            mainControls: document.getElementById('main-controls'),
+            mainControlsWrapper: document.getElementById('main-controls-wrapper'),
             generateBookControls: document.getElementById('generate-book-controls'),
-            globalOptions: document.getElementById('global-options-container'),
+            customMazeBtn: document.getElementById('custom-maze-btn'),
+            customMazeOptions: document.getElementById('custom-maze-options'),
             completionModal: document.getElementById('completion-modal')
         };
         
         function cyrb128(str) { let h1=1779033703,h2=3144134277,h3=1013904242,h4=2773480762; for (let i=0,k;i<str.length;i++){k=str.charCodeAt(i);h1=h2^Math.imul(h1^k,597399067);h2=h3^Math.imul(h2^k,2869860233);h3=h4^Math.imul(h3^k,951274213);h4=h1^Math.imul(h4^k,2716044179)} h1=Math.imul(h3^(h1>>>18),597399067);h2=Math.imul(h4^(h2>>>22),2869860233);h3=Math.imul(h1^(h3>>>17),951274213);h4=Math.imul(h2^(h4>>>19),2716044179); return(h1^h2^h3^h4)>>>0 }
         function mulberry32(a){ return function(){let t=a+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296} }
         
-        function triggerGeneratePuzzle() { clearTimeout(debounceTimeout); debounceTimeout = setTimeout(() => generatePuzzle(), 20); }
+        function triggerGeneratePuzzle(useRandomSeed = false) { if(useRandomSeed) { ui.seedInput.value = ''; } clearTimeout(debounceTimeout); debounceTimeout = setTimeout(() => generatePuzzle(), 20); }
 
         async function generatePuzzle(isForBook = false) {
             animationToken++; 
@@ -258,9 +267,9 @@
             gridSize = parseInt(ui.gridSizeSelect.value, 10);
             const mazeType = ui.mazeTypeSelect.value;
             gameMode = ui.gameModeSelect.value;
-            let seed = ui.seedInput.value.trim() || Date.now().toString();
-            if (isForBook && ui.seedInput.value.trim() === '') seed += Math.random();
-            rng = mulberry32(cyrb128(seed));
+            currentSeed = ui.seedInput.value.trim() || Date.now().toString(36);
+            if (!isForBook) { ui.seedInput.value = currentSeed; }
+            rng = mulberry32(cyrb128(currentSeed));
 
             const loaderMessage = gridSize >= 75 ? "Generating large maze..." : "Generating Maze...";
             if (!isForBook) { setUiLoading(true, loaderMessage); ui.completionModal.classList.remove('visible'); }
@@ -272,14 +281,14 @@
             await new Promise(resolve => setTimeout(resolve, 30));
 
             try {
-                let mazeGrid;
+                let mazeGrid = createEmptyGrid(gridSize, gridSize);
                 
                 switch(mazeType) {
-                    case 'prim': mazeGrid = generateMazePrim(gridSize, gridSize); break;
-                    case 'binary': mazeGrid = generateMazeBinaryTree(gridSize, gridSize); break;
-                    case 'kruskal': mazeGrid = generateMazeKruskal(gridSize, gridSize); break;
-                    case 'wilsons': mazeGrid = generateMazeWilsons(gridSize, gridSize); break;
-                    default: mazeGrid = generateMazeRecursiveBacktracker(gridSize, gridSize); break;
+                    case 'prim': generateMazePrim(mazeGrid); break;
+                    case 'binary': generateMazeBinaryTree(mazeGrid); break;
+                    case 'kruskal': generateMazeKruskal(mazeGrid); break;
+                    case 'wilsons': generateMazeWilsons(mazeGrid); break;
+                    default: generateMazeRecursiveBacktracker(mazeGrid); break;
                 }
                 
                 let path;
@@ -305,8 +314,7 @@
                 if (!isForBook) {
                     currentGridState = mazeGrid;
                     solutionPath = path;
-                    puzzleConfigKey = `${gridSize}-${mazeType}-${seed}-${gameMode}`;
-                    ui.status.textContent = `Type: ${ui.mazeTypeSelect.options[ui.mazeTypeSelect.selectedIndex].text}`;
+                    puzzleConfigKey = `${gridSize}-${mazeType}-${currentSeed}-${gameMode}`;
                     updateGridDisplay();
                     document.getElementById('grid-wrapper').style.visibility = 'visible';
                     document.getElementById('instructions-container').style.visibility = 'visible'; 
@@ -325,17 +333,17 @@
         function createEmptyGrid(width, height) { return Array(height).fill(null).map((_, y) => Array(width).fill(null).map((_, x) => ({ x, y, walls: [true, true, true, true], visited: false }))); }
         function getNeighbors(cell, grid, allDirs = false) { const { x, y } = cell; const neighbors = []; const directions = [{x:0, y:-1}, {x:1, y:0}, {x:0, y:1}, {x:-1, y:0}]; for (const dir of directions) { const nX = x + dir.x, nY = y + dir.y; if (nX >= 0 && nX < grid[0].length && nY >= 0 && nY < grid.length) { const neighbor = grid[nY][nX]; if(allDirs || !neighbor.visited) neighbors.push(neighbor); } } return neighbors; }
         function removeWall(a, b) { const dX = a.x - b.x, dY = a.y - b.y; if (dX === 1) { a.walls[3] = false; b.walls[1] = false; } else if (dX === -1) { a.walls[1] = false; b.walls[3] = false; } if (dY === 1) { a.walls[0] = false; b.walls[2] = false; } else if (dY === -1) { a.walls[2] = false; b.walls[0] = false; } }
-        function generateMazeRecursiveBacktracker(w,h){const g=createEmptyGrid(w,h);const s=[g[0][0]];g[0][0].visited=!0;while(s.length>0){const c=s.pop();const n=getNeighbors(c,g);if(n.length>0){s.push(c);const N=n[Math.floor(rng()*n.length)];removeWall(c,N);N.visited=!0;s.push(N)}}return g}
-        function generateMazePrim(w,h){const g=createEmptyGrid(w,h);const f=[];const sX=Math.floor(rng()*w),sY=Math.floor(rng()*h);g[sY][sX].visited=!0;getNeighbors(g[sY][sX],g,!0).forEach(n=>f.push(n));while(f.length>0){const fI=Math.floor(rng()*f.length);const c=f.splice(fI,1)[0];const iN=getNeighbors(c,g,!0).filter(n=>n.visited);if(iN.length>0){const N=iN[Math.floor(rng()*iN.length)];removeWall(c,N);c.visited=!0;getNeighbors(c,g,!0).filter(n=>!n.visited).forEach(n=>{if(!f.some(fr=>fr.x===n.x&&fr.y===n.y))f.push(n)})}}return g}
-        function generateMazeBinaryTree(w,h){const g=createEmptyGrid(w,h);for(let y=0;y<h;y++){for(let x=0;x<w;x++){const c=g[y][x];const n=[];if(y>0)n.push(g[y-1][x]);if(x>0)n.push(g[y][x-1]);if(n.length>0){const N=n[Math.floor(rng()*n.length)];removeWall(c,N)}}}return g}
-        function generateMazeKruskal(w,h){const g=createEmptyGrid(w,h);const e=[];const s=[];for(let y=0;y<h;y++){for(let x=0;x<w;x++){s[y*w+x]=y*w+x;if(y>0)e.push({c1:g[y][x],c2:g[y-1][x]});if(x>0)e.push({c1:g[y][x],c2:g[y][x-1]})}}for(let i=e.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[e[i],e[j]]=[e[j],e[i]]}const find=i=>s[i]===i?i:(s[i]=find(s[i]));const union=(i,j)=>{const rI=find(i),rJ=find(j);if(rI!==rJ)s[rI]=rJ};for(const edge of e){const{c1,c2}=edge;const n1=c1.y*w+c1.x,n2=c2.y*w+c2.x;if(find(n1)!==find(n2)){removeWall(c1,c2);union(n1,n2)}}return g}
-        function generateMazeWilsons(w,h){const g=createEmptyGrid(w,h);const u=[];g.forEach(r=>r.forEach(c=>u.push(c)));const fC=u.splice(Math.floor(rng()*u.length),1)[0];fC.visited=!0;while(u.length>0){let c=u[Math.floor(rng()*u.length)];let p=[c];while(!c.visited){const n=getNeighbors(c,g,!0);c=n[Math.floor(rng()*n.length)];const pI=p.findIndex(cell=>cell.x===c.x&&cell.y===c.y);if(pI!==-1){p.splice(pI+1)}else{p.push(c)}}for(let i=0;i<p.length-1;i++){removeWall(p[i],p[i+1]);p[i].visited=!0;const uI=u.findIndex(cell=>cell.x===p[i].x&&cell.y===p[i].y);if(uI!==-1)u.splice(uI,1)}}return g}
+        function generateMazeRecursiveBacktracker(g){const s=[g[0][0]];g[0][0].visited=!0;while(s.length>0){const c=s.pop();const n=getNeighbors(c,g);if(n.length>0){s.push(c);const N=n[Math.floor(rng()*n.length)];removeWall(c,N);N.visited=!0;s.push(N)}}}
+        function generateMazePrim(g){const w=g[0].length,h=g.length;const f=[];const sX=Math.floor(rng()*w),sY=Math.floor(rng()*h);g[sY][sX].visited=!0;getNeighbors(g[sY][sX],g,!0).forEach(n=>f.push(n));while(f.length>0){const fI=Math.floor(rng()*f.length);const c=f.splice(fI,1)[0];const iN=getNeighbors(c,g,!0).filter(n=>n.visited);if(iN.length>0){const N=iN[Math.floor(rng()*iN.length)];removeWall(c,N);c.visited=!0;getNeighbors(c,g,!0).filter(n=>!n.visited).forEach(n=>{if(!f.some(fr=>fr.x===n.x&&fr.y===n.y))f.push(n)})}}}
+        function generateMazeBinaryTree(g){const w=g[0].length,h=g.length;for(let y=0;y<h;y++){for(let x=0;x<w;x++){const c=g[y][x];const n=[];if(y>0)n.push(g[y-1][x]);if(x>0)n.push(g[y][x-1]);if(n.length>0){const N=n[Math.floor(rng()*n.length)];removeWall(c,N)}}}}
+        function generateMazeKruskal(g){const w=g[0].length,h=g.length;const e=[];const s=[];for(let y=0;y<h;y++){for(let x=0;x<w;x++){s[y*w+x]=y*w+x;if(y>0)e.push({c1:g[y][x],c2:g[y-1][x]});if(x>0)e.push({c1:g[y][x],c2:g[y][x-1]})}}for(let i=e.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[e[i],e[j]]=[e[j],e[i]]}const find=i=>s[i]===i?i:(s[i]=find(s[i]));const union=(i,j)=>{const rI=find(i),rJ=find(j);if(rI!==rJ)s[rI]=rJ};for(const edge of e){const{c1,c2}=edge;const n1=c1.y*w+c1.x,n2=c2.y*w+c2.x;if(find(n1)!==find(n2)){removeWall(c1,c2);union(n1,n2)}}}
+        function generateMazeWilsons(g){const w=g[0].length,h=g.length;const u=[];g.forEach(r=>r.forEach(c=>u.push(c)));const fC=u.splice(Math.floor(rng()*u.length),1)[0];fC.visited=!0;while(u.length>0){let c=u[Math.floor(rng()*u.length)];let p=[c];while(!c.visited){const n=getNeighbors(c,g,!0);c=n[Math.floor(rng()*n.length)];const pI=p.findIndex(cell=>cell.x===c.x&&cell.y===c.y);if(pI!==-1){p.splice(pI+1)}else{p.push(c)}}for(let i=0;i<p.length-1;i++){removeWall(p[i],p[i+1]);p[i].visited=!0;const uI=u.findIndex(cell=>cell.x===p[i].x&&cell.y===p[i].y);if(uI!==-1)u.splice(uI,1)}}}
         
         function findSolutionPath(grid, start, end) { const queue = [[start]]; const visited = new Set([`${start.x},${start.y}`]); while(queue.length > 0) { const path = queue.shift(); const { x, y } = path[path.length - 1]; if (x === end.x && y === end.y) return path; const cell = grid[y][x]; const directions = [{x:0, y:-1}, {x:1, y:0}, {x:0, y:1}, {x:-1, y:0}]; for (let i = 0; i < directions.length; i++) { if (!cell.walls[i]) { const nX = x + directions[i].x, nY = y + directions[i].y; const key = `${nX},${nY}`; if (!visited.has(key)) { visited.add(key); queue.push([...path, {x: nX, y: nY}]); } } } } return []; }
         function findAllDistances(grid, startCell) { const queue = [[startCell]]; const visited = new Set([`${startCell.x},${startCell.y}`]); let longestPath = [startCell]; while (queue.length > 0) { const path = queue.shift(); const currentCell = path[path.length - 1]; if (path.length > longestPath.length) { longestPath = path; } const cell = grid[currentCell.y][currentCell.x]; const directions = [{ x: 0, y: -1 }, { x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }]; for (let i = 0; i < directions.length; i++) { if (!cell.walls[i]) { const nX = currentCell.x + directions[i].x, nY = currentCell.y + directions[i].y; const key = `${nX},${nY}`; if (!visited.has(key)) { visited.add(key); const newPath = [...path, { x: nX, y: nY }]; queue.push(newPath); } } } } return { farthestCell: longestPath[longestPath.length - 1], path: longestPath }; }
         function findLongestPathEndpoints(grid) { const firstPass = findAllDistances(grid, grid[0][0]); const secondPass = findAllDistances(grid, firstPass.farthestCell); return { start: firstPass.farthestCell, end: secondPass.farthestCell, path: secondPass.path }; }
         
-        async function findStarCollectionPath(grid, startNode, endNode, starNodes) { let fullPath = []; let currentNode = startNode; let remainingStars = [...starNodes]; while(remainingStars.length > 0) { let shortestPathToStar = []; let bestStar = null; for (const star of remainingStars) { const pathToStar = findSolutionPath(grid, currentNode, star); if (shortestPathToStar.length === 0 || pathToStar.length < shortestPathToStar.length) { shortestPathToStar = pathToStar; bestStar = star; } } if(bestStar) { if (fullPath.length === 0) { fullPath = shortestPathToStar; } else { fullPath.push(...shortestPathToStar.slice(1)); } currentNode = bestStar; remainingStars = remainingStars.filter(s => s.x !== currentNode.x || s.y !== currentNode.y); } else { break; } } const finalPath = findSolutionPath(grid, currentNode, endNode); if(finalPath) fullPath.push(...finalPath.slice(1)); return fullPath; }
+        async function findStarCollectionPath(grid, startNode, endNode, starNodes) { let fullPath = []; let currentNode = startNode; let remainingStars = [...starNodes]; while(remainingStars.length > 0) { let shortestPathToStar = []; let bestStar = null; for (const star of remainingStars) { const pathToStar = findSolutionPath(grid, currentNode, star); if (!pathToStar.length) continue; if (shortestPathToStar.length === 0 || pathToStar.length < shortestPathToStar.length) { shortestPathToStar = pathToStar; bestStar = star; } } if(bestStar) { if (fullPath.length === 0) { fullPath = shortestPathToStar; } else { fullPath.push(...shortestPathToStar.slice(1)); } currentNode = bestStar; remainingStars = remainingStars.filter(s => s.x !== currentNode.x || s.y !== currentNode.y); } else { break; } } const finalPath = findSolutionPath(grid, currentNode, endNode); if(finalPath && finalPath.length) fullPath.push(...finalPath.slice(1)); return fullPath; }
         function placeStars(grid, solution) { const numStars = Math.max(1, Math.floor(grid.length / 10)); const solutionCoords = new Set(solution.map(p => `${p.x},${p.y}`)); const deadEnds = []; for (let y = 0; y < grid.length; y++) { for (let x = 0; x < grid.length; x++) { const cell = grid[y][x]; let wallCount = 0; cell.walls.forEach(w => { if (w) wallCount++; }); if (wallCount >= 3) { const coord = `${x},${y}`; if (coord !== `${startCoords.x},${startCoords.y}` && coord !== `${endCoords.x},${endCoords.y}` && !solutionCoords.has(coord)) { deadEnds.push({ x, y }); } } } } for (let i = deadEnds.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [deadEnds[i], deadEnds[j]] = [deadEnds[j], deadEnds[i]]; } stars = deadEnds.slice(0, numStars); updateStarStatus(); }
         function updateStarStatus() { if (gameMode !== 'collect_stars') return; const remaining = stars.length - collectedStars.length; ui.gameModeStatus.textContent = `Stars to collect: ${remaining}`; const endCell = ui.grid.querySelector('.end-cell'); if (endCell) { endCell.classList.toggle('disabled', remaining > 0); } }
 
@@ -343,22 +351,22 @@
         
         function updateCellDisplay(cell) { const { x, y, walls } = cell; if (!cell.domElement) cell.domElement = ui.grid.querySelector(`[data-x='${x}'][data-y='${y}']`); if (!cell.domElement) return; cell.domElement.className = ''; if (walls[0]) cell.domElement.classList.add('wall-top'); if (walls[1]) cell.domElement.classList.add('wall-right'); if (walls[2]) cell.domElement.classList.add('wall-bottom'); if (walls[3]) cell.domElement.classList.add('wall-left'); if (x === startCoords?.x && y === startCoords?.y) cell.domElement.classList.add('start-cell'); if (x === endCoords?.x && y === endCoords?.y) cell.domElement.classList.add('end-cell'); if (stars.some(s => s.x === x && s.y === y)) { cell.domElement.classList.add('star-cell'); } }
         function updateGridDisplay(blank = false) { ui.grid.innerHTML=''; ui.grid.classList.toggle('blindfold-mode', gameMode === 'blindfold' && !isGeneratingBook); const pW=Math.min(document.getElementById('puzzle-container').clientWidth,800); let cS=Math.floor(pW/gridSize); cS=Math.max(2,cS); ui.grid.style.gridTemplateColumns=`repeat(${gridSize},${cS}px)`; ui.grid.style.gridTemplateRows=`repeat(${gridSize},${cS}px)`; const wW=Math.max(1,Math.floor(cS/12)); document.getElementById('dynamic-grid-styles').innerHTML=`#grid div.wall-top{border-top-width:${wW}px;border-top-style:solid}#grid div.wall-right{border-right-width:${wW}px;border-right-style:solid}#grid div.wall-bottom{border-bottom-width:${wW}px;border-bottom-style:solid}#grid div.wall-left{border-left-width:${wW}px;border-left-style:solid}#grid div.keyboard-cursor{box-shadow:inset 0 0 0 ${Math.max(2,wW+1)}px var(--color-cursor-shadow)}`; for(let y=0;y<gridSize;y++){for(let x=0;x<gridSize;x++){const c=document.createElement('div');c.dataset.x=x;c.dataset.y=y;const cD=currentGridState[y][x];cD.domElement = c; if(!blank) updateCellDisplay(cD); ui.grid.appendChild(c)}}if(!blank){ redrawUserPath(); updateStarStatus();} }
-        function redrawUserPath() { document.querySelectorAll('#grid div.user-path, #grid div.keyboard-cursor, #grid div.solved-path, #grid div.visible-cell').forEach(c => { c.classList.remove('user-path', 'keyboard-cursor', 'solved-path', 'visible-cell') }); if (gameMode === 'blindfold' && userPath.length > 0) { const lastPos = userPath[userPath.length - 1]; const visibilityRadius = Math.max(2, Math.floor(gridSize / 10) + 1); for (let y = -visibilityRadius; y <= visibilityRadius; y++) { for (let x = -visibilityRadius; x <= visibilityRadius; x++) { if (Math.sqrt(x*x + y*y) <= visibilityRadius) { const cell = ui.grid.querySelector(`[data-x='${lastPos.x + x}'][data-y='${lastPos.y + y}']`); if (cell) cell.classList.add('visible-cell'); } } } } userPath.forEach(p => { const cell = ui.grid.querySelector(`[data-x='${p.x}'][data-y='${p.y}']`); if (cell) { cell.classList.add('user-path'); if (gameMode === 'blindfold') cell.classList.add('visible-cell'); } }); if (userPath.length > 0) { const lastPos = userPath[userPath.length - 1]; const cursorCell = ui.grid.querySelector(`[data-x='${lastPos.x}'][data-y='${lastPos.y}']`); if (cursorCell) cursorCell.classList.add('keyboard-cursor'); const starIndex = stars.findIndex(s => s.x === lastPos.x && s.y === lastPos.y); if (starIndex > -1 && !collectedStars.some(s => s.x === lastPos.x && s.y === lastPos.y)) { collectedStars.push(stars[starIndex]); updateStarStatus(); } } }
+        function redrawUserPath() { document.querySelectorAll('#grid div.user-path, #grid div.keyboard-cursor, #grid div.solved-path, #grid div.visible-cell').forEach(c => { c.classList.remove('user-path', 'keyboard-cursor', 'solved-path', 'visible-cell') }); if (gameMode === 'blindfold' && userPath.length > 0) { const lastPos = userPath[userPath.length - 1]; const visibilityRadius = Math.max(2, Math.floor(gridSize / 10) + 1); for (let y = -visibilityRadius; y <= visibilityRadius; y++) { for (let x = -visibilityRadius; x <= visibilityRadius; x++) { if (Math.sqrt(x*x + y*y) <= visibilityRadius) { const cell = ui.grid.querySelector(`[data-x='${lastPos.x + x}'][data-y='${lastPos.y + y}']`); if (cell) cell.classList.add('visible-cell'); } } } } userPath.forEach(p => { const cell = ui.grid.querySelector(`[data-x='${p.x}'][data-y='${p.y}']`); if (cell) { cell.classList.add('user-path'); if (gameMode === 'blindfold') cell.classList.add('visible-cell'); } }); if (userPath.length > 0) { const lastPos = userPath[userPath.length - 1]; const cursorCell = ui.grid.querySelector(`[data-x='${lastPos.x}'][data-y='${lastPos.y}']`); if (cursorCell) cursorCell.classList.add('keyboard-cursor'); if (gameMode === 'collect_stars') { const starIndex = stars.findIndex(s => s.x === lastPos.x && s.y === lastPos.y); if (starIndex > -1 && !collectedStars.some(s => s.x === lastPos.x && s.y === lastPos.y)) { collectedStars.push(stars[starIndex]); updateStarStatus(); } } } }
         
-        function revealSolution() { if(solutionPath.length === 0 || isAnimating) return; isAnimating = true; ui.revealBtn.disabled = true; let i = 0; const currentToken = ++animationToken; let prevCell = null; if(gameMode === 'blindfold') { ui.grid.classList.remove('blindfold-mode'); document.querySelectorAll('#grid div').forEach(c => c.classList.add('visible-cell')); } function animate() { if (i < solutionPath.length && currentToken === animationToken) { if(prevCell) prevCell.classList.remove('solution-cursor'); const pos = solutionPath[i]; const cell = ui.grid.querySelector(`[data-x='${pos.x}'][data-y='${pos.y}']`); if(cell) { cell.classList.add('solution-path'); cell.classList.add('solution-cursor'); prevCell = cell; } i++; requestAnimationFrame(animate); } else { isAnimating = false; if(prevCell) prevCell.classList.remove('solution-cursor'); } } animate(); }
+        function revealSolution() { if(solutionPath.length === 0 || isAnimating) return; isAnimating = true; ui.revealBtn.disabled = true; let i = 0; const currentToken = ++animationToken; if(gameMode === 'blindfold') { ui.grid.classList.remove('blindfold-mode'); document.querySelectorAll('#grid div').forEach(c => c.classList.add('visible-cell')); } function animate() { if (i < solutionPath.length && currentToken === animationToken) { const pos = solutionPath[i]; const cell = ui.grid.querySelector(`[data-x='${pos.x}'][data-y='${pos.y}']`); if(cell) { if(cell.classList.contains('solution-path')) { cell.classList.add('backtrack-flash'); setTimeout(() => cell.classList.remove('backtrack-flash'), 300); } else { cell.classList.add('solution-path'); } } i++; requestAnimationFrame(animate); } else { isAnimating = false; } } animate(); }
         
-        function showBookOptions() { ui.mainControls.style.display='none';ui.generateBookControls.style.display='block';ui.globalOptions.style.display='none'}
-        function resetBookUI() { ui.mainControls.style.display='grid';ui.generateBookControls.style.display='none';ui.globalOptions.style.display='grid'}
-        function downloadPdf() { if(currentGridState.length===0){alert("Please generate a maze first.");return} const{jsPDF}=window.jspdf; const d=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'}); drawMazeOnPdfPage(d,{grid:currentGridState,solution:solutionPath,title:'Maze',start:startCoords,end:endCoords,stars:stars},false,null,false); d.save(`Maze-${gridSize}x${gridSize}-${ui.mazeTypeSelect.value}.pdf`)}
-        async function downloadBook() { const pC=parseInt(document.getElementById('puzzle-count-input').value,10); if(isNaN(pC)||pC<1||pC>100){alert("Please enter a number between 1 and 100.");return} const iAK=document.getElementById('answer-key-checkbox').checked; const iPN=document.getElementById('page-numbers-checkbox').checked; const bT=document.getElementById('book-title-input').value.trim(); const bS=document.getElementById('book-subtitle-input').value.trim(); ui.grid.innerHTML='';document.getElementById('instructions-container').style.visibility='hidden';isGeneratingBook=true;setUiLoading(true,"Preparing Book...");ui.loader.scrollIntoView({behavior:'smooth',block:'center'});document.getElementById('cancel-btn').style.display='block';document.getElementById('cancel-btn').disabled=false; const{jsPDF}=window.jspdf; const d=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'}); d.deletePage(1);const aPD=[]; try{ if(bT){d.addPage();const pW=d.internal.pageSize.getWidth(),pH=d.internal.pageSize.getHeight();d.setFont('helvetica','bold').setFontSize(30).text(bT,pW/2,pH/2-10,{align:'center'});if(bS)d.setFont('helvetica','normal').setFontSize(16).text(bS,pW/2,pH/2+5,{align:'center'})} for(let i=1;i<=pC;i++){ if(!isGeneratingBook){throw new Error("Cancelled")} ui.loaderText.textContent=`Generating Maze ${i} of ${pC}...`; const pD=await generatePuzzle(true);pD.title=`Maze ${i}`;aPD.push(pD); d.addPage();drawMazeOnPdfPage(d,pD,false,i,iPN)} if(iAK&&aPD.length>0){ ui.loaderText.textContent="Generating Maze Solutions...";await new Promise(r=>setTimeout(r,50));drawMazeSolutions(d,aPD)} const sT=(bT.replace(/[^a-zA-Z0-9]/g,'-')||`Maze-Book-${pC}-Mazes`).substring(0,50);d.save(`${sT}.pdf`);ui.status.textContent="Book successfully generated!"} catch(e){ if(e.message==="Cancelled")ui.status.textContent="Book generation cancelled."; else ui.status.textContent=`Error: ${e.message}`} finally{isGeneratingBook=false;setUiLoading(false);resetBookUI();triggerGeneratePuzzle()}}
-        function cancelBookGeneration() { isGeneratingBook=false; }
-        function drawMazeOnPdfPage(d, pD, sS, pN, iPN) { const { grid: g, solution: s, title: t, start: pdfStart, end: pdfEnd, stars: pdfStars } = pD; const pW = d.internal.pageSize.getWidth(), pH = d.internal.pageSize.getHeight(), m = 15; let cY = m; d.setFont('helvetica', 'bold').setFontSize(16).text(t, pW / 2, cY, { align: 'center' }); cY += 15; const mS = 180, cG = g.length, cS = mS / cG; const sX = (pW - mS) / 2, sY = cY; if (sS) { d.setFillColor(255, 193, 7); s.forEach(p => d.rect(sX + p.x * cS, sY + p.y * cS, cS, cS, 'F')) } d.setFillColor(40, 167, 69).rect(sX + pdfStart.x * cS, sY + pdfStart.y * cS, cS, cS, 'F'); d.setFillColor(220, 53, 69).rect(sX + pdfEnd.x * cS, sY + pdfEnd.y * cS, cS, cS, 'F'); if (pdfStars && pdfStars.length > 0) { const starSVG = "M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"; d.setFillColor(255, 193, 7); pdfStars.forEach(star => { d.addSvg(starSVG, sX + star.x * cS, sY + star.y * cS, cS, cS); }); } d.setDrawColor(0).setLineWidth(.5); for (let y = 0; y < cG; y++) { for (let x = 0; x < cG; x++) { const c = g[y][x], cX = sX + x * cS, cY = sY + y * cS; if (c.walls[0]) d.line(cX, cY, cX + cS, cY); if (c.walls[1]) d.line(cX + cS, cY, cX + cS, cY + cS); if (c.walls[2]) d.line(cX, cY + cS, cX + cS, cY + cS); if (c.walls[3]) d.line(cX, cY, cX, cY + cS) } } if (iPN && pN) { d.setFont('helvetica', 'normal').setFontSize(8).text(String(pN), pW / 2, pH - m / 2, { align: 'center' }) } }
+        function showBookOptions() { ui.mainControlsWrapper.style.display='none';ui.generateBookControls.style.display='block';}
+        function resetBookUI() { ui.mainControlsWrapper.style.display='block';ui.generateBookControls.style.display='none';}
+        
+        function getPdfMetadata(doc) { const mazeType = ui.mazeTypeSelect.options[ui.mazeTypeSelect.selectedIndex].text; const gameModeText = ui.gameModeSelect.options[ui.gameModeSelect.selectedIndex].text; return `Size: ${gridSize}x${gridSize} | Maze: ${mazeType} | Mode: ${gameModeText}\nSeed: ${currentSeed}`; }
+        
+        function drawMazeOnPdfPage(doc, pD, sS, pN, iPN) { const { grid: g, solution: s, title: t, start: pdfStart, end: pdfEnd, stars: pdfStars } = pD; const pW = doc.internal.pageSize.getWidth(), pH = doc.internal.pageSize.getHeight(), m = 15; let cY = m; doc.setFont('helvetica', 'bold').setFontSize(16).text(t, pW / 2, cY, { align: 'center' }); cY += 15; const mS = 180, cG = g.length, cS = mS / cG; const sX = (pW - mS) / 2, sY = cY; if (sS) { doc.setFillColor(255, 193, 7); s.forEach(p => doc.rect(sX + p.x * cS, sY + p.y * cS, cS, cS, 'F')); } doc.setFillColor(40, 167, 69).rect(sX + pdfStart.x * cS, sY + pdfStart.y * cS, cS, cS, 'F'); doc.setFillColor(220, 53, 69).rect(sX + pdfEnd.x * cS, sY + pdfEnd.y * cS, cS, cS, 'F'); if (pdfStars && pdfStars.length > 0) { const starSVG = "M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"; doc.setFillColor(255, 193, 7); pdfStars.forEach(star => { doc.addSvg(starSVG, sX + star.x * cS, sY + star.y * cS, cS, cS); }); } doc.setDrawColor(0).setLineWidth(.5); for (let y = 0; y < cG; y++) { for (let x = 0; x < cG; x++) { const c = g[y][x], cX = sX + x * cS, cY = sY + y * cS; if (c.walls[0]) doc.line(cX, cY, cX + cS, cY); if (c.walls[1]) doc.line(cX + cS, cY, cX + cS, cY + cS); if (c.walls[2]) doc.line(cX, cY + cS, cX + cS, cY + cS); if (c.walls[3]) doc.line(cX, cY, cX, cY + cS); } } const metadata = getPdfMetadata(); doc.setFont('helvetica', 'normal').setFontSize(8).text(metadata, pW / 2, sY + mS + 10, { align: 'center' }); if (iPN && pN) { doc.setFont('helvetica', 'normal').setFontSize(8).text(String(pN), pW / 2, pH - m / 2, { align: 'center' }); } }
         function drawMazeSolutions(d,aPD){d.addPage();const pW=d.internal.pageSize.getWidth(),pH=d.internal.pageSize.getHeight(),m=15;d.setFont('helvetica','bold').setFontSize(20).text("Maze Solutions",pW/2,m,{align:'center'});const pPP=6,cols=2,rows=3;const bW=(pW-m*2)/cols,bH=(pH-m*2-10)/rows;aPD.forEach((pD,idx)=>{if(idx>0&&idx%pPP===0){d.addPage();d.setFont('helvetica','bold').setFontSize(20).text("Maze Solutions",pW/2,m,{align:'center'})}const i=idx%pPP;const col=i%cols,row=Math.floor(i/cols);const sBX=m+col*bW,sBY=m+10+row*bH;d.setFont('helvetica','bold').setFontSize(10).text(pD.title,sBX+bW/2,sBY+8,{align:'center'});const mS=Math.min(bW-10,bH-20),cG=pD.grid.length,cS=mS/cG;const sX=sBX+(bW-mS)/2,sY=sBY+12;d.setFillColor(255,193,7);pD.solution.forEach(p=>d.rect(sX+p.x*cS,sY+p.y*cS,cS,cS,'F'));d.setDrawColor(0).setLineWidth(.2);for(let y=0;y<cG;y++){for(let x=0;x<cG;x++){const c=pD.grid[y][x],cX=sX+x*cS,cY=sY+y*cS;if(c.walls[0])d.line(cX,cY,cX+cS,cY);if(c.walls[1])d.line(cX+cS,cY,cX+cS,cY+cS);if(c.walls[2])d.line(cX,cY+cS,cX+cS,cY+cS);if(c.walls[3])d.line(cX,cY,cX,cY+cS)}}})}
         
         function handleInteractionStart(tC){if(!tC||isDrawing||isAnimating)return;const x=parseInt(tC.dataset.x,10),y=parseInt(tC.dataset.y,10);if(x===startCoords.x&&y===startCoords.y){isDrawing=true;userPath=[{x,y}];redrawUserPath()}}
         function handleInteractionMove(tC){if(!isDrawing||!tC||isAnimating)return;const x=parseInt(tC.dataset.x,10),y=parseInt(tC.dataset.y,10);const lP=userPath[userPath.length-1];if(x===lP.x&&y===lP.y)return;if(userPath.length>1&&userPath[userPath.length-2].x===x&&userPath[userPath.length-2].y===y){userPath.pop()}else{const cD=currentGridState[lP.y][lP.x];const dX=x-lP.x,dY=y-lP.y;if(Math.abs(dX)+Math.abs(dY)===1){let wI=dY===-1?0:dX===1?1:dY===1?2:3;if(!cD.walls[wI])userPath.push({x,y})}}redrawUserPath();if(x===endCoords.x&&y===endCoords.y)handleInteractionEnd()}
         function handleInteractionEnd(){if(!isDrawing)return;isDrawing=false;const lP=userPath[userPath.length-1];if(lP&&lP.x===endCoords.x&&lP.y===endCoords.y){if (gameMode === 'collect_stars' && collectedStars.length < stars.length) return; handlePuzzleCompletion(Date.now() - startTime);}}
-        function handleKeyDown(e){const activeEl = document.activeElement; if (activeEl && activeEl.tagName === 'INPUT') return; if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight', 'r'].includes(e.key) && e.key.toLowerCase() !== 'r' || isDrawing || isAnimating)return;e.preventDefault();if(e.key.toLowerCase()==='r'){revealSolution();return}if(userPath.length===0) return;const lP=userPath[userPath.length-1];let tP,wI=-1;switch(e.key){case'ArrowUp':tP={x:lP.x,y:lP.y-1};wI=0;break;case'ArrowDown':tP={x:lP.x,y:lP.y+1};wI=2;break;case'ArrowLeft':tP={x:lP.x-1,y:lP.y};wI=3;break;case'ArrowRight':tP={x:lP.x+1,y:lP.y};wI=1;break}if(tP) { if(userPath.length>1&&tP.x===userPath[userPath.length-2].x&&tP.y===userPath[userPath.length-2].y){userPath.pop()}else{if(tP.x>=0&&tP.x<gridSize&&tP.y>=0&&tP.y<gridSize){const cD=currentGridState[lP.y][lP.x];if(!cD.walls[wI]){userPath.push(tP)}}}redrawUserPath();const nLP=userPath[userPath.length-1];if(nLP.x===endCoords.x&&nLP.y===endCoords.y){if (gameMode === 'collect_stars' && collectedStars.length < stars.length) return; handlePuzzleCompletion(Date.now()-startTime);}}}
+        function handleKeyDown(e){const activeEl = document.activeElement; if (activeEl && activeEl.tagName === 'INPUT') return; if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight', 'r', 'R'].includes(e.key) || isDrawing || isAnimating)return;e.preventDefault();if(e.key.toLowerCase()==='r'){revealSolution();return}if(userPath.length===0) return;const lP=userPath[userPath.length-1];let tP,wI=-1;switch(e.key){case'ArrowUp':tP={x:lP.x,y:lP.y-1};wI=0;break;case'ArrowDown':tP={x:lP.x,y:lP.y+1};wI=2;break;case'ArrowLeft':tP={x:lP.x-1,y:lP.y};wI=3;break;case'ArrowRight':tP={x:lP.x+1,y:lP.y};wI=1;break}if(tP) { if(userPath.length>1&&tP.x===userPath[userPath.length-2].x&&tP.y===userPath[userPath.length-2].y){userPath.pop()}else{if(tP.x>=0&&tP.x<gridSize&&tP.y>=0&&tP.y<gridSize){const cD=currentGridState[lP.y][lP.x];if(!cD.walls[wI]){userPath.push(tP)}}}redrawUserPath();const nLP=userPath[userPath.length-1];if(nLP.x===endCoords.x&&nLP.y===endCoords.y){if (gameMode === 'collect_stars' && collectedStars.length < stars.length) return; handlePuzzleCompletion(Date.now()-startTime);}}}
 
         function formatTime(ms){const s=Math.floor(ms/1000);return`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`}
         function handlePuzzleCompletion(elapsedTime) { const bestTime = localStorage.getItem(puzzleConfigKey); let isNewBest = false; if (bestTime === null || elapsedTime < parseInt(bestTime, 10)) { localStorage.setItem(puzzleConfigKey, elapsedTime); isNewBest = true; } document.getElementById('your-time').textContent = `Your time: ${formatTime(elapsedTime)}`; document.getElementById('best-time').textContent = `Best time: ${formatTime(localStorage.getItem(puzzleConfigKey))}`; document.getElementById('new-best-time').textContent = isNewBest ? 'New Best Time!' : ''; ui.completionModal.classList.add('visible'); ui.revealBtn.disabled = true; document.querySelectorAll('#grid div.user-path').forEach(c => { c.classList.remove('user-path'); c.classList.add('solved-path'); }); }
@@ -375,9 +383,13 @@
             ui.grid.addEventListener('touchend',handleInteractionEnd);
             ui.grid.addEventListener('touchcancel',handleInteractionEnd);
             document.addEventListener('keydown',handleKeyDown);
-            ui.seedGoBtn.addEventListener('click', triggerGeneratePuzzle);
-            ui.randomSeedBtn.addEventListener('click', () => { ui.seedInput.value = Date.now().toString(36); triggerGeneratePuzzle(); });
-            triggerGeneratePuzzle();
+            ui.seedGoBtn.addEventListener('click', () => triggerGeneratePuzzle(false));
+            ui.randomSeedBtn.addEventListener('click', () => triggerGeneratePuzzle(true));
+            ui.customMazeBtn.addEventListener('click', () => {
+                const isVisible = ui.customMazeOptions.style.display === 'flex';
+                ui.customMazeOptions.style.display = isVisible ? 'none' : 'flex';
+            });
+            triggerGeneratePuzzle(true);
             window.addEventListener('resize',()=>{if(currentGridState.length>0){clearTimeout(debounceTimeout);debounceTimeout=setTimeout(updateGridDisplay,100)}});
         });
     </script>
