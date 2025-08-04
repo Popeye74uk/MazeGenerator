@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Maze Generator v0.20</title>
+    <title>Maze Generator v0.21</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
     <style>
@@ -200,7 +200,7 @@
 
 
         <div id="status-container"><p id="source-status"></p></div>
-        <div id="version-info">v0.20</div>
+        <div id="version-info">v0.21</div>
     </div>
 
     <div id="completion-modal">
@@ -377,25 +377,25 @@
         drawHexGrid() {
             this.hexGrid.innerHTML = '';
             const puzzleContainerWidth = document.getElementById('puzzle-container').clientWidth;
-            const radius = State.grid.length; // This is the "radius" of the hex grid
+            const radius = Math.floor(UI.gridSizeSelect.value / 2); // This is the "radius" of the hex grid
             const hexSize = Math.floor(puzzleContainerWidth / (radius * 2)) / 0.8;
             
             const hexWidth = hexSize * 2;
             const hexHeight = Math.sqrt(3) * hexSize;
 
-            for(let r = 0; r < radius * 2 -1; r++) {
+            for (let r_ax = -radius; r_ax <= radius; r_ax++) {
                 const rowEl = document.createElement('div');
                 rowEl.className = 'hex-row';
-                if(r % 2 !== 0) rowEl.style.marginLeft = `${hexWidth/4}px`;
+                rowEl.style.marginTop = `-${hexHeight / 8}px`;
                 
-                for(let q = 0; q < (r % 2 === 0 ? radius : radius -1) ; q++) {
-                     const cellData = State.grid[r] ? State.grid[r][q] : undefined;
-                     if(!cellData) continue;
+                for (let q_ax = -radius; q_ax <= radius; q_ax++) {
+                    const cellData = App.getCell(q_ax, r_ax);
+                    if (!cellData || (q_ax + r_ax < -radius) || (q_ax + r_ax > radius)) continue;
 
                     const hexEl = document.createElement('div');
                     hexEl.className = 'hex';
-                    hexEl.style.width = `${hexWidth/2}px`;
-                    hexEl.style.height = `${hexHeight/2}px`;
+                    hexEl.style.width = `${hexWidth / 2}px`;
+                    hexEl.style.height = `${hexHeight / 2}px`;
                     hexEl.dataset.q = cellData.q;
                     hexEl.dataset.r = cellData.r;
                     cellData.domElement = hexEl;
@@ -424,8 +424,7 @@
         updateCellDisplay(cell) {
             if (!cell || !cell.domElement) return;
             const el = cell.domElement;
-            let classes = el.classList.value.split(' ').filter(c => !['start-cell', 'end-cell', 'solution-path', 'user-path', 'keyboard-cursor'].includes(c));
-            el.className = classes.join(' ');
+            el.className = el.className.replace(/start-cell|end-cell|solution-path|user-path|keyboard-cursor/g, '').trim();
             
             if (State.startCoords && cell.q === State.startCoords.q && cell.r === State.startCoords.r) el.classList.add('start-cell');
             if (State.endCoords && cell.q === State.endCoords.q && cell.r === State.endCoords.r) el.classList.add('end-cell');
@@ -526,8 +525,10 @@
             await Utils.sleep(30);
 
             try {
-                const generatorFunction = Algorithms[mazeType];
-                State.grid = generatorFunction(size, shape);
+                // *** THIS IS THE FIX ***
+                // Call the generator function directly on the Algorithms object
+                // to preserve the 'this' context.
+                State.grid = Algorithms[mazeType](size, shape);
                 
                 if (gameMode === 'longest_path') {
                     const { start, end, path } = Pathfinding.findLongestPath(State.grid);
@@ -555,7 +556,7 @@
                     State.startTime = Date.now();
                 }
                 
-                return { grid: State.grid, solution: State.solutionPath, title, seed, size, type: mazeType, shape };
+                return { grid: State.grid, solution: State.solutionPath, title, seed, size, type: mazeType, shape, start: State.startCoords, end: State.endCoords };
 
             } catch (error) {
                 if (error.message !== "Animation cancelled") {
@@ -616,9 +617,11 @@
         handleKeyDown(e) {
             if (document.activeElement.tagName === 'INPUT' || State.isDrawing || State.isAnimating || State.userPath.length === 0) return;
             
-            const keyMap = UI.shapeSelect.value === 'square'
+            const isSquare = UI.shapeSelect.value === 'square';
+            const keyMap = isSquare
                 ? { 'ArrowUp': 0, 'ArrowRight': 1, 'ArrowDown': 2, 'ArrowLeft': 3 }
-                : { 'e': 0, 'd': 1, 's': 2, 'a': 3, 'q': 4, 'w': 5 }; // Hex keys
+                : { 'e': 5, 'd': 0, 's': 1, 'a': 2, 'q': 3, 'w': 4 }; // Hex keys using axial directions (NE, E, SE, SW, W, NW)
+
 
             if (e.key.toLowerCase() === 'r') {
                 e.preventDefault();
@@ -630,7 +633,7 @@
             if(!Object.keys(keyMap).map(k=>k.toLowerCase()).includes(key)) return;
             e.preventDefault();
 
-            const wallIndex = keyMap[e.key];
+            const wallIndex = keyMap[e.key] ?? keyMap[e.key.toLowerCase()];
             const lastPos = State.userPath[State.userPath.length - 1];
             const lastCell = this.getCell(lastPos.q, lastPos.r);
             
@@ -651,26 +654,25 @@
         },
 
         getCell(q, r) {
-             if (UI.shapeSelect.value === 'square') {
+            const shape = UI.shapeSelect.value;
+             if (shape === 'square') {
                 return State.grid[q] ? State.grid[q][r] : null; // q=r, r=c for square
-             } else {
-                // For hex, need to find it
-                return State.grid.flat().find(cell => cell.q === q && cell.r === r);
+             } else { // Hexagon
+                return State.grid.flat().find(cell => cell && cell.q === q && cell.r === r);
              }
         },
         
         getCellFromElement(el) {
             const element = el.closest('[data-q], [data-r]');
             if (!element) return null;
-            if (UI.shapeSelect.value === 'square') {
-                const r = parseInt(element.dataset.r, 10);
-                const c = parseInt(element.dataset.c, 10);
-                return this.getCell(r,c);
-            } else {
-                const q = parseInt(element.dataset.q, 10);
-                const r = parseInt(element.dataset.r, 10);
-                return this.getCell(q,r);
-            }
+            
+            const r_val = element.dataset.r;
+            const q_val = element.dataset.q ?? r_val; // For squares, q is not present, so use r
+
+            const q = parseInt(q_val, 10);
+            const r = parseInt(r_val, 10);
+
+            return this.getCell(q,r);
         },
         
         getNeighborDirection(cell, neighbor) {
@@ -704,18 +706,21 @@
             const grid = [];
             for (let q = -radius; q <= radius; q++) {
                 for (let r = -radius; r <= radius; r++) {
-                     if (q + r > -radius && q + r < radius && q>-radius && r>-radius && q<radius && r<radius) {
-                        grid.push({ q, r, walls: [true,true,true,true,true,true], visited: false, neighbors: [] });
+                    if (q + r > -radius-1 && q + r < radius+1) {
+                         grid.push({ q, r, walls: [true,true,true,true,true,true], visited: false, neighbors: [] });
                     }
                 }
             }
             const findCell = (q,r) => grid.find(c => c.q === q && c.r === r);
             grid.forEach(cell => {
-                cell.neighbors = Config.HEX_DIRECTIONS.map(dir => findCell(cell.q + dir.q, cell.r + dir.r));
+                // Axial directions: E, SE, SW, W, NW, NE
+                const axial_directions = [ {q:1,r:0}, {q:0,r:1}, {q:-1,r:1}, {q:-1,r:0}, {q:0,r:-1}, {q:1,r:-1} ];
+                cell.neighbors = axial_directions.map(dir => findCell(cell.q + dir.q, cell.r + dir.r));
             });
             return [grid]; // Return as [[]] for flat() to work
         },
         _removeWall(a, b) {
+            if(!a || !b) return;
             const a_i = a.neighbors.findIndex(n => n && n.q === b.q && n.r === b.r);
             if (a_i !== -1) a.walls[a_i] = false;
             const b_i = b.neighbors.findIndex(n => n && n.q === a.q && n.r === a.r);
@@ -729,14 +734,15 @@
             cells[0].visited = true;
 
             while (stack.length > 0) {
-                const current = stack.pop();
+                const current = stack[stack.length - 1];
                 const unvisited = current.neighbors.filter(n => n && !n.visited);
                 if (unvisited.length > 0) {
-                    stack.push(current);
                     const neighbor = unvisited[Math.floor(State.rng() * unvisited.length)];
                     this._removeWall(current, neighbor);
                     neighbor.visited = true;
                     stack.push(neighbor);
+                } else {
+                    stack.pop();
                 }
             }
             return grid;
@@ -753,6 +759,7 @@
             while(frontier.length > 0) {
                 const fIndex = Math.floor(State.rng() * frontier.length);
                 const current = frontier.splice(fIndex, 1)[0];
+                if (current.visited) continue;
                 
                 const visitedNeighbors = current.neighbors.filter(n => n && n.visited);
                 if (visitedNeighbors.length > 0) {
@@ -775,9 +782,10 @@
              const cells = grid.flat();
              const edges = [];
              cells.forEach(cell => {
-                cell.neighbors.forEach(neighbor => {
-                    if (neighbor && cell.q < neighbor.q) { // Avoid duplicate edges
-                        edges.push({a: cell, b: neighbor});
+                cell.neighbors.forEach((neighbor, i) => {
+                    if (neighbor) {
+                        const edgeExists = edges.some(e => (e.a === cell && e.b === neighbor) || (e.a === neighbor && e.b === cell));
+                        if (!edgeExists) edges.push({ a: cell, b: neighbor });
                     }
                 });
              });
@@ -967,13 +975,12 @@
                     if(!State.isGeneratingBook) throw new Error("Cancelled");
                     UI.loaderText.textContent = `Generating Maze ${i} of ${puzzleCount}...`;
                     
-                    // For books, we'll keep the options from the main screen
                     const options = {
                         shape: UI.shapeSelect.value,
                         size: UI.gridSizeSelect.value,
                         type: UI.mazeTypeSelect.value,
                         mode: UI.gameModeSelect.value,
-                        seed: (UI.seedInput.value.trim() || Date.now().toString()) + i // ensure unique puzzles
+                        seed: (UI.seedInput.value.trim() || Date.now().toString()) + i
                     };
 
                     const puzzleData = await App.generatePuzzle(true, options);
@@ -1009,17 +1016,20 @@
             if (State.grid.length === 0) { alert("Please generate a maze first."); return; }
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const typeName = UI.mazeTypeSelect.options[UI.mazeTypeSelect.selectedIndex].text;
             this._drawMazeOnPdfPage(doc, {
                 grid: State.grid,
                 solution: State.solutionPath,
-                title: UI.status.textContent,
-                shape: UI.shapeSelect.value
+                title: `${typeName} ${UI.gridSizeSelect.value}x${UI.gridSizeSelect.value}`,
+                shape: UI.shapeSelect.value,
+                start: State.startCoords,
+                end: State.endCoords
             }, false, null, false);
             doc.save(`Maze-${UI.gridSizeSelect.value}x${UI.gridSizeSelect.value}-${UI.mazeTypeSelect.value}.pdf`);
         },
 
         _drawMazeOnPdfPage(doc, puzzleData, showSolution, pageNum, includePageNos) {
-            const { grid, solution, title, shape, seed, type, size } = puzzleData;
+            const { grid, solution, title, shape, seed, type, size, start, end } = puzzleData;
             const pageWidth = doc.internal.pageSize.getWidth();
             const pageHeight = doc.internal.pageSize.getHeight();
             const margin = 15;
@@ -1028,8 +1038,7 @@
             doc.setFont('helvetica', 'bold').setFontSize(16).text(title, pageWidth / 2, currentY, { align: 'center' });
             currentY += 10;
             
-            // Add QR code and details if this is a book page
-            if (pageNum) {
+            if (pageNum && seed) {
                 const url = `${window.location.origin}${window.location.pathname}?shape=${shape}&size=${size}&type=${type}&seed=${seed}`;
                 const qr = new QRious({ value: url, size: 200 });
                 doc.addImage(qr.toDataURL(), 'PNG', margin, currentY, 30, 30);
@@ -1047,9 +1056,9 @@
             const startY = currentY;
 
             if (shape === 'square') {
-                this._drawSquareMazePdf(doc, grid, solution, startX, startY, mazeSize, showSolution);
+                this._drawSquareMazePdf(doc, grid, solution, startX, startY, mazeSize, showSolution, start, end);
             } else {
-                this._drawHexMazePdf(doc, grid, solution, startX, startY, mazeSize, showSolution);
+                this._drawHexMazePdf(doc, grid, solution, startX, startY, mazeSize, showSolution, start, end);
             }
 
             if (includePageNos && pageNum) {
@@ -1057,7 +1066,7 @@
             }
         },
         
-        _drawSquareMazePdf(doc, grid, solution, startX, startY, mazeSize, showSolution) {
+        _drawSquareMazePdf(doc, grid, solution, startX, startY, mazeSize, showSolution, startCell, endCell) {
             const gridSize = grid.length;
             const cellSize = mazeSize / gridSize;
 
@@ -1066,8 +1075,6 @@
                 solution.forEach(p => doc.rect(startX + p.r * cellSize, startY + p.q * cellSize, cellSize, cellSize, 'F'));
             }
             
-            const startCell = solution[0];
-            const endCell = solution[solution.length - 1];
             doc.setFillColor(40, 167, 69).rect(startX + startCell.r * cellSize, startY + startCell.q * cellSize, cellSize, cellSize, 'F');
             doc.setFillColor(220, 53, 69).rect(startX + endCell.r * cellSize, startY + endCell.q * cellSize, cellSize, cellSize, 'F');
 
@@ -1082,36 +1089,57 @@
             }));
         },
         
-        _drawHexMazePdf(doc, grid, solution, startX, startY, mazeSize, showSolution) {
-            // This is a simplified rendering for PDF
-            const radius = Math.floor(grid.flat().reduce((max, c) => Math.max(max, Math.abs(c.q), Math.abs(c.r)), 0)) + 1;
-            const hexSideLength = (mazeSize / (radius * 2)) / Math.sqrt(3) * 1.2;
+        _drawHexMazePdf(doc, grid, solution, startX, startY, mazeSize, showSolution, startCell, endCell) {
+            const allCells = grid.flat();
+            const q_coords = allCells.map(c => c.q);
+            const r_coords = allCells.map(c => c.r);
+            const q_min = Math.min(...q_coords), q_max = Math.max(...q_coords);
+            const r_min = Math.min(...r_coords), r_max = Math.max(...r_coords);
+
+            const hex_radius_q = (q_max - q_min);
+            const hex_radius_r = (r_max - r_min);
+
+            const hexSideLength = Math.min(mazeSize / (hex_radius_q * 1.5), mazeSize / (hex_radius_r * Math.sqrt(3))) / 2;
             const hexHeight = 2 * hexSideLength;
             const hexWidth = Math.sqrt(3) * hexSideLength;
+            
+            const centerOffsetX = startX + mazeSize/2 - (q_min + q_max)/2 * hexWidth*0.75;
+            const centerOffsetY = startY + mazeSize/2 - (r_min + r_max)/2 * hexHeight*0.85;
 
             const drawHex = (cx, cy) => {
                 const points = [];
                 for(let i=0; i<6; i++) {
-                    const angle = Math.PI / 180 * (60 * i - 30);
+                    const angle = Math.PI / 180 * (60 * i + 30);
                     points.push([cx + hexSideLength * Math.cos(angle), cy + hexSideLength * Math.sin(angle)]);
                 }
                 return points;
             };
 
-            const cells = grid.flat();
+             const getCellCenter = (cell) => {
+                const cx = centerOffsetX + cell.q * hexWidth * 0.75;
+                const cy = centerOffsetY + (cell.r + cell.q / 2) * hexHeight * 0.75;
+                return { cx, cy };
+            };
+
             if(showSolution) {
                 doc.setFillColor(255, 193, 7);
                 solution.forEach(p => {
-                    const cx = startX + mazeSize/2 + p.q * hexWidth * 0.75;
-                    const cy = startY + mazeSize/2 + (p.r + p.q/2) * hexHeight * 0.75;
+                    const {cx, cy} = getCellCenter(p);
                     doc.polygon(drawHex(cx, cy), 'F');
                 });
             }
             
+            const start_center = getCellCenter(startCell);
+            doc.setFillColor(40,167,69);
+            doc.polygon(drawHex(start_center.cx, start_center.cy), 'F');
+            
+            const end_center = getCellCenter(endCell);
+            doc.setFillColor(220,53,69);
+            doc.polygon(drawHex(end_center.cx, end_center.cy), 'F');
+
              doc.setDrawColor(0).setLineWidth(0.2);
-             cells.forEach(cell => {
-                const cx = startX + mazeSize/2 + cell.q * hexWidth * 0.75;
-                const cy = startY + mazeSize/2 + (cell.r + cell.q/2) * hexHeight * 0.75;
+             allCells.forEach(cell => {
+                const {cx, cy} = getCellCenter(cell);
                 const points = drawHex(cx, cy);
 
                 for (let i = 0; i < 6; i++) {
@@ -1153,9 +1181,1220 @@
                 const startY = startBoxY + 12;
 
                 if (puzzleData.shape === 'square') {
-                    this._drawSquareMazePdf(doc, puzzleData.grid, puzzleData.solution, startX, startY, mazeSize, true);
+                    this._drawSquareMazePdf(doc, puzzleData.grid, puzzleData.solution, startX, startY, mazeSize, true, puzzleData.start, puzzleData.end);
                 } else {
-                    this._drawHexMazePdf(doc, puzzleData.grid, puzzleData.solution, startX, startY, mazeSize, true);
+                    this._drawHexMazePdf(doc, puzzleData.grid, puzzleData.solution, startX, startY, mazeSize, true, puzzleData.start, puzzleData.end);
+                }
+            });
+        }
+    };
+    
+    const Utils = {
+        cyrb128(str) { let h1=1779033703,h2=3144134277,h3=1013904242,h4=2773480762; for (let i=0,k;i<str.length;i++){k=str.charCodeAt(i);h1=h2^Math.imul(h1^k,597399067);h2=h3^Math.imul(h2^k,2869860233);h3=h4^Math.imul(h3^k,951274213);h4=h1^Math.imul(h4^k,2716044179)} h1=Math.imul(h3^(h1>>>18),597399067);h2=Math.imul(h4^(h2>>>22),2869860233);h3=Math.imul(h1^(h3>>>17),951274213);h4=Math.imul(h2^(h4>>>19),2716044179); return(h1^h2^h3^h4)>>>0 },
+        mulberry32(a){ return function(){let t=a+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296} },
+        formatTime(ms){if(ms===null) return '--:--'; const s=Math.floor(ms/1000);return`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`},
+        sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+    };
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        if(urlParams.has('seed')){
+            document.getElementById('shape-select').value = urlParams.get('shape') || 'square';
+            document.getElementById('grid-size-select').value = urlParams.get('size') || '20';
+            document.getElementById('maze-type-select').value = urlParams.get('type') || 'backtracker';
+            document.getElementById('seed-input').value = urlParams.get('seed');
+        }
+        App.init();
+    });
+
+    </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maze Generator v0.21</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    <style>
+        :root{--color-background:#f8f9fa;--color-container-bg:#f8f9fa;--color-text-primary:#333;--color-text-secondary:#6c757d;--color-heading:#343a40;--color-grid-lines:#adb5bd;--color-grid-cell-bg:#fff;--color-button-disabled-bg:#6c757d;--color-spinner-track:#f3f3f3;--color-modal-bg:rgba(0,0,0,0.6);--color-modal-content-bg:white;--color-box-shadow:rgba(0,0,0,0.1);--color-box-shadow-hover:rgba(0,0,0,0.15);--color-primary:#007bff;--color-success:#28a745;--color-danger:#dc3545;--color-warning:#fd7e14;--color-info:#6f42c1;--color-pink:#d63384;--color-revealed-bg:rgba(40,167,69,0.3);--color-user-path-bg:rgba(0,123,255,0.3);--color-start-bg:var(--color-success);--color-end-bg:var(--color-danger);--color-cursor-shadow:rgba(0,123,255,0.7);}
+        body.dark-mode{--color-background:#121212;--color-container-bg:#1e1e1e;--color-text-primary:#e0e0e0;--color-text-secondary:#888;--color-heading:#f1f1f1;--color-grid-lines:#444;--color-grid-cell-bg:#2a2a2a;--color-button-disabled-bg:#555;--color-spinner-track:#444;--color-modal-bg:rgba(0,0,0,0.8);--color-modal-content-bg:#2c2c2c;--color-box-shadow:rgba(0,0,0,0.3);--color-box-shadow-hover:rgba(0,0,0,0.4);--color-revealed-bg:rgba(40,167,69,0.4);--color-user-path-bg:rgba(0,123,255,0.4);--color-cursor-shadow:rgba(50,150,255,0.7)}
+        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:16px;color:var(--color-text-primary);background-color:var(--color-background);padding:20px;margin:0;display:flex;justify-content:center;align-items:flex-start;min-height:100vh;transition:background-color .3s,color .3s}
+        .container{width:100%;max-width:900px;margin:0 auto}
+        .main-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+        .main-header h1{flex-grow:1;margin:0;padding:0 10px;text-align:center}
+        .header-spacer{width:44px;height:44px;flex-shrink:0}
+        #puzzle-container{display:flex;margin-top:20px;justify-content:center;min-height:400px}
+        #grid-wrapper{position:relative;width:100%;display:flex;justify-content:center;align-items:center}
+        #grid{display:grid;background-color:transparent;border:1px solid var(--color-grid-lines);font-family:"Courier New",Courier,monospace;font-weight:700;cursor:pointer}
+        #hex-grid-container{cursor:pointer;position:relative}
+        .hex-row{display:flex}
+        .hex{clip-path:polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);background-color:var(--color-grid-cell-bg);position:relative;display:flex;justify-content:center;align-items:center;transition:background-color .2s}
+        .hex.wall-top-right{border-top:2px solid var(--color-grid-lines);border-right:2px solid var(--color-grid-lines)}
+        .hex-wall{background:var(--color-grid-lines);position:absolute;transform-origin:center}
+        #grid div, #hex-grid-container .hex {user-select:none}
+        #grid div.wall-top{border-top:1px solid var(--color-grid-lines)}
+        #grid div.wall-right{border-right:1px solid var(--color-grid-lines)}
+        #grid div.wall-bottom{border-bottom:1px solid var(--color-grid-lines)}
+        #grid div.wall-left{border-left:1px solid var(--color-grid-lines)}
+        .start-cell{background-color:var(--color-start-bg)!important}
+        .end-cell{background-color:var(--color-end-bg)!important}
+        .solution-path{background-color:var(--color-revealed-bg)!important}
+        .user-path{background-color:var(--color-user-path-bg)!important}
+        .keyboard-cursor{box-shadow:inset 0 0 0 3px var(--color-cursor-shadow)}
+        body.dark-mode .loader{background-color:var(--color-background)}
+        .loader{position:absolute;top:0;left:0;right:0;bottom:0;background-color:var(--color-container-bg);display:flex;justify-content:center;align-items:center;flex-direction:column;gap:15px;z-index:10;font-size:1.1em;color:var(--color-text-secondary);border-radius:4px}
+        .loader.hidden{opacity:0;pointer-events:none}
+        #loader-time{font-size:.9em;font-style:italic;color:var(--color-text-secondary)}
+        .spinner{border:4px solid var(--color-spinner-track);border-top:4px solid var(--color-primary);border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite}
+        @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+        #instructions-container{width:fit-content;margin:20px auto 0;text-align:center}
+        #instructions-container h3{margin-top:0;color:var(--color-heading)}
+        #instructions-list{list-style-position:inside;padding:0;margin:0 auto;display:inline-block;text-align:left}
+        #instructions-list li{padding:4px 0;font-size:.95em;color:var(--color-text-primary)}
+        .controls-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px;max-width:415px;margin:25px auto 0}
+        .global-options-container{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:15px 25px;max-width:850px;margin:25px auto -10px;align-items:center}
+        .option-group{display:grid;grid-template-columns:5em 1fr;align-items:center;gap:10px}
+        .option-group label{font-weight:700;text-align:right}
+        .option-group select, .option-group input {width:100%;padding:8px;font-size:.9em;box-sizing:border-box;border:1px solid var(--color-grid-lines);border-radius:5px;height:40px}
+        .seed-group{display:flex;align-items:center;width:100%;height:40px;}
+        #seed-input{flex-grow:1;border:1px solid var(--color-grid-lines);border-right:none;border-radius:5px 0 0 5px;padding:8px;font-size:.9em;height:100%;box-sizing:border-box;background-color:var(--color-grid-cell-bg);color:var(--color-text-primary)}
+        body.dark-mode #seed-input{background-color:#fff;color:#000}
+        #seed-input:focus{outline:none}
+        #random-seed-btn{padding:0;width:40px;height:100%;line-height:38px;font-size:1.2em;background:var(--color-text-secondary);border:1px solid var(--color-text-secondary);border-left:none;color:#fff;cursor:pointer;flex-shrink:0;display:flex;justify-content:center;align-items:center;border-radius:0 5px 5px 0}
+        button{padding:12px 20px;font-size:1em;font-weight:700;cursor:pointer;color:#fff;border:none;border-radius:5px;transition:all .2s;box-shadow:0 2px 4px var(--color-box-shadow);width:100%;box-sizing:border-box}
+        button:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 4px 8px var(--color-box-shadow-hover)}
+        button:disabled{background-color:var(--color-button-disabled-bg);cursor:not-allowed;opacity:.7}
+        #generate-btn{background-color:var(--color-primary)}
+        #reveal-btn{background-color:var(--color-success)}
+        #download-pdf-btn{background-color:var(--color-pink)}
+        #make-book-btn{background-color:var(--color-danger)}
+        #create-book-btn{background-color:var(--color-danger)}
+        #cancel-btn,#cancel-book-options-btn{background-color:var(--color-text-secondary)}
+        #cancel-btn{min-width:120px;width:auto}
+        #generate-book-controls{display:none}
+        .book-options-grid{display:grid;grid-template-columns:auto 1fr;justify-content:center;align-items:center;gap:10px 15px;margin:15px auto 0;max-width:415px}
+        .book-options-grid label{text-align:right}
+        #book-checkbox-options{display:flex;gap:20px;align-items:center;justify-content:flex-start}
+        #book-checkbox-options label{user-select:none;cursor:pointer}
+        #status-container{text-align:center;margin-top:15px;font-style:italic;min-height:20px;color:var(--color-text-secondary)}
+        #version-info{text-align:center;margin-top:20px;font-size:.8em;color:var(--color-grid-lines)}
+        #completion-modal{position:fixed;top:0;left:0;right:0;bottom:0;background-color:var(--color-modal-bg);display:flex;justify-content:center;align-items:center;z-index:20;opacity:0;pointer-events:none;transition:opacity .3s ease-in-out}
+        #completion-modal.visible{opacity:1;pointer-events:auto}
+        .modal-content{background-color:var(--color-modal-content-bg);padding:40px;border-radius:10px;text-align:center;box-shadow:0 5px 15px var(--color-box-shadow);transform:scale(.9);transition:transform .3s ease-in-out}
+        #completion-modal.visible .modal-content{transform:scale(1)}
+        .modal-content h2{font-size:2.5em;margin-top:0;margin-bottom:20px;color:var(--color-success)}
+        .modal-content button{min-width:150px;background-color:var(--color-primary)}
+        #completion-details{margin-bottom:25px;font-size:1.1em;color:var(--color-text-primary)}
+        #completion-details p{margin:5px 0}
+        #new-best-time{color:var(--color-warning);font-weight:700}
+        #grid-wrapper,#instructions-container{visibility:hidden}
+        #theme-toggle-btn{background:0 0;border:2px solid var(--color-text-secondary);color:var(--color-text-secondary);width:44px;height:44px;padding:0;border-radius:50%;display:flex;justify-content:center;align-items:center;overflow:hidden;box-shadow:none;flex-shrink:0}
+        #theme-toggle-btn:hover{border-color:var(--color-text-primary);color:var(--color-text-primary);transform:none;box-shadow:none}
+        #theme-toggle-btn svg{width:24px;height:24px;fill:currentColor;transition:transform .3s ease-in-out}
+        .icon-sun,.icon-moon{display:none}
+        body.dark-mode .icon-sun{display:block}
+        body:not(.dark-mode) .icon-moon{display:block}
+        @media print{@page{size:A4;margin:.5in}body{background-color:#fff;font-size:12pt;margin:0;padding:0}.container{width:100%;margin:0;padding:0;box-shadow:none}.main-header,.global-options-container,.controls-grid,#generate-book-controls,#status-container,#version-info{display:none}#grid-wrapper{border:2px solid #333}#grid{border:none}#instructions-container{margin-top:15px}}
+        @media (max-width:768px){.book-options-grid{grid-template-columns:1fr}.book-options-grid label{text-align:left;margin-left:5px}.global-options-container{grid-template-columns:1fr}}
+        @media (max-width:480px){.main-header h1{font-size:1.5em}#book-checkbox-options{flex-direction:column;align-items:flex-start;gap:12px}.modal-content h2{font-size:2em}.controls-grid{grid-template-columns:1fr}}
+    </style>
+    <style id="dynamic-grid-styles"></style>
+</head>
+<body>
+    <div class="container">
+        <header class="main-header">
+            <div class="header-spacer"></div>
+            <h1>Maze Generator</h1>
+            <button id="theme-toggle-btn" title="Toggle theme">
+                <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.64 5.64c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41-.39-.39-1.02-.39-1.41 0-.39.39-.39 1.02 0 1.41zm12.73 12.73c.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41-.39-.39-1.02-.39-1.41 0-.39.39-.39 1.02 0 1.41zM5.64 18.36c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41-.39-.39-1.02-.39-1.41 0zM18.36 5.64c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0 .39-.39.39-1.02 0-1.41-.39-.38-1.03-.38-1.41 0z"/></svg>
+                <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" enable-background="new 0 0 24 24" viewBox="0 0 24 24"><path d="M12,3c-4.97,0-9,4.03-9,9s4.03,9,9,9s9-4.03,9-9c0-0.46-0.04-0.92-0.11-1.36c-0.98,1.37-2.58,2.26-4.39,2.26 c-2.98,0-5.4-2.42-5.4-5.4c0-1.81,0.89-3.42,2.26-4.39C12.92,3.04,12.46,3,12,3z"/></svg>
+            </button>
+        </header>
+
+        <div id="puzzle-container">
+            <div id="grid-wrapper">
+                <div id="grid"></div>
+                <div id="hex-grid-container"></div>
+                <div id="loader" class="loader">
+                    <div class="spinner"></div>
+                    <span id="loader-text"></span>
+                    <span id="loader-time"></span>
+                    <button id="cancel-btn">Cancel</button>
+                </div>
+            </div>
+        </div>
+        <div id="instructions-container">
+            <h3>Instructions</h3>
+            <ul id="instructions-list">
+                <li>Click the start (green), then use the Arrow Keys to move.</li>
+                <li>Or, click and drag from the green square to the red square.</li>
+                <li>Hexagon mazes use Q, W, E, A, S, D keys for movement.</li>
+            </ul>
+        </div>
+        
+        <div class="global-options-container" id="global-options-container">
+            <div class="option-group">
+                <label for="shape-select">Shape:</label>
+                <select id="shape-select">
+                    <option value="square" selected>Square</option>
+                    <option value="hexagon">Hexagon</option>
+                </select>
+            </div>
+            <div class="option-group">
+                <label for="grid-size-select">Size:</label>
+                <select id="grid-size-select">
+                    <option value="15">15x15</option>
+                    <option value="20" selected>20x20</option>
+                    <option value="25">25x25</option>
+                    <option value="35">35x35</option>
+                    <option value="50">50x50</option>
+                </select>
+            </div>
+             <div class="option-group">
+                <label for="game-mode-select">Mode:</label>
+                <select id="game-mode-select">
+                    <option value="standard" selected>Standard</option>
+                    <option value="longest_path">Longest Path</option>
+                </select>
+            </div>
+            <div class="option-group">
+                <label for="maze-type-select">Maze:</label>
+                <select id="maze-type-select">
+                    <option value="binary">Binary Tree (Easy)</option>
+                    <option value="prim">Prim's Algorithm</option>
+                    <option value="kruskal">Kruskal's Algorithm</option>
+                    <option value="backtracker" selected>DFS Backtracker (Hard)</option>
+                    <option value="wilsons">Wilson's Algorithm (Expert)</option>
+                </select>
+            </div>
+            <div class="option-group">
+                <label for="seed-input">Seed:</label>
+                <div class="seed-group">
+                    <input type="text" id="seed-input" placeholder="Any text for repeatable maze">
+                    <button id="random-seed-btn" title="Random Seed">🎲</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls-grid" id="main-controls">
+            <button id="generate-btn">New Maze</button>
+            <button id="reveal-btn">Reveal Solution</button>
+            <button id="download-pdf-btn">Download as PDF</button>
+            <button id="make-book-btn">Make Book</button>
+        </div>
+
+        <div id="generate-book-controls">
+            <h3>Make a Book</h3>
+            <div class="book-options-grid">
+                <label for="book-title-input">Book Title:</label>
+                <input type="text" id="book-title-input" placeholder="e.g., My Awesome Maze Book">
+                
+                <label for="book-subtitle-input">Subtitle:</label>
+                <input type="text" id="book-subtitle-input" placeholder="e.g., By Alex Doe">
+
+                <label for="puzzle-count-input">Mazes:</label>
+                <input type="number" id="puzzle-count-input" value="10" min="1" max="100" style="width: 70px;">
+                
+                <label>Options:</label>
+                <div id="book-checkbox-options">
+                    <label><input type="checkbox" id="answer-key-checkbox" checked> Maze Solutions</label>
+                    <label><input type="checkbox" id="page-numbers-checkbox" checked> Page Numbers</label>
+                </div>
+            </div>
+            <div class="controls-grid">
+                <button id="create-book-btn">Create Book</button>
+                <button id="cancel-book-options-btn">Cancel</button>
+            </div>
+        </div>
+
+
+        <div id="status-container"><p id="source-status"></p></div>
+        <div id="version-info">v0.21</div>
+    </div>
+
+    <div id="completion-modal">
+        <div class="modal-content">
+            <h2>You Solved It!</h2>
+            <div id="completion-details">
+                <p id="your-time"></p>
+                <p id="best-time"></p>
+                <p id="new-best-time"></p>
+            </div>
+            <button id="play-again-btn">Play Again?</button>
+        </div>
+    </div>
+    
+    <script>
+    // --- CODE REFACTOR OVERVIEW ---
+    // The code has been organized into logical objects to improve maintainability.
+    // This simulates a modular structure. In a real-world build process, these
+    // would be separate files (e.g., ui.js, maze.js, pdf.js).
+    //
+    // - App: The main controller, orchestrates the entire application.
+    // - State: Holds the current application state (grid, paths, settings).
+    // - Config: Static configuration and constants.
+    // - UI: Handles all DOM manipulation and UI updates.
+    // - Algorithms: Contains all maze generation algorithms.
+    // - Pathfinding: Contains algorithms for solving mazes and finding paths.
+    // - PDF: Handles all PDF generation logic.
+    // - Utils: General utility functions.
+
+    const State = {
+        grid: [],
+        solutionPath: [],
+        userPath: [],
+        startCoords: null,
+        endCoords: null,
+        isGeneratingBook: false,
+        isAnimating: false,
+        isDrawing: false,
+        startTime: null,
+        puzzleConfigKey: '',
+        rng: null,
+        debounceTimeout: null,
+        animationToken: 0
+    };
+
+    const Config = {
+        SQUARE_DIRECTIONS: [ { r: -1, c: 0, wall: 0 }, { r: 0, c: 1, wall: 1 }, { r: 1, c: 0, wall: 2 }, { r: 0, c: -1, wall: 3 } ], // N, E, S, W
+        HEX_DIRECTIONS: [ { q: 1, r: 0 }, { q: 0, r: 1 }, { q: -1, r: 1 }, { q: -1, r: 0 }, { q: 0, r: -1 }, { q: 1, r: -1 } ], // E, SE, SW, W, NW, NE
+    };
+
+    const UI = {
+        init() {
+            this.grid = document.getElementById('grid');
+            this.hexGrid = document.getElementById('hex-grid-container');
+            this.revealBtn = document.getElementById('reveal-btn');
+            this.status = document.getElementById('source-status');
+            this.loader = document.getElementById('loader');
+            this.loaderText = document.getElementById('loader-text');
+            this.shapeSelect = document.getElementById('shape-select');
+            this.gridSizeSelect = document.getElementById('grid-size-select');
+            this.mazeTypeSelect = document.getElementById('maze-type-select');
+            this.gameModeSelect = document.getElementById('game-mode-select');
+            this.seedInput = document.getElementById('seed-input');
+            this.mainControls = document.getElementById('main-controls');
+            this.generateBookControls = document.getElementById('generate-book-controls');
+            this.globalOptions = document.getElementById('global-options-container');
+            this.completionModal = document.getElementById('completion-modal');
+
+            // Add more elements as needed
+            this.bindEvents();
+        },
+
+        bindEvents() {
+            document.getElementById('generate-btn').addEventListener('click', () => App.triggerGeneratePuzzle());
+            document.getElementById('reveal-btn').addEventListener('click', () => this.revealSolution());
+            document.getElementById('download-pdf-btn').addEventListener('click', () => PDF.downloadSinglePdf());
+            document.getElementById('make-book-btn').addEventListener('click', () => this.showBookOptions());
+            document.getElementById('create-book-btn').addEventListener('click', () => PDF.downloadBook());
+            document.getElementById('cancel-book-options-btn').addEventListener('click', () => this.resetBookUI());
+            document.getElementById('cancel-btn').addEventListener('click', () => App.cancelBookGeneration());
+            document.getElementById('play-again-btn').addEventListener('click', () => App.triggerGeneratePuzzle());
+            this.completionModal.addEventListener('click', () => this.hideCompletionModal());
+
+            this.shapeSelect.addEventListener('change', () => {
+                const isHex = this.shapeSelect.value === 'hexagon';
+                // Wilson's and Binary Tree are not adapted for Hex yet.
+                document.querySelector('#maze-type-select option[value="wilsons"]').disabled = isHex;
+                document.querySelector('#maze-type-select option[value="binary"]').disabled = isHex;
+                if(isHex && (this.mazeTypeSelect.value === 'wilsons' || this.mazeTypeSelect.value === 'binary')){
+                    this.mazeTypeSelect.value = 'backtracker';
+                }
+                App.triggerGeneratePuzzle();
+            });
+            this.gridSizeSelect.addEventListener('change', () => App.triggerGeneratePuzzle());
+            this.mazeTypeSelect.addEventListener('change', () => App.triggerGeneratePuzzle());
+            this.gameModeSelect.addEventListener('change', () => App.triggerGeneratePuzzle());
+            this.seedInput.addEventListener('input', () => App.triggerGeneratePuzzle(true));
+            document.getElementById('random-seed-btn').addEventListener('click', () => {
+                this.seedInput.value = Date.now().toString(36);
+                App.triggerGeneratePuzzle();
+            });
+
+            // Interaction listeners
+            const gridWrapper = document.getElementById('grid-wrapper');
+            gridWrapper.addEventListener('mousedown', e => { if (e.button === 0) App.handleInteractionStart(e.target); });
+            gridWrapper.addEventListener('mouseover', e => App.handleInteractionMove(e.target));
+            document.addEventListener('mouseup', e => { if (e.button === 0) App.handleInteractionEnd(); });
+            gridWrapper.addEventListener('touchstart', e => { e.preventDefault(); const t = e.touches[0]; App.handleInteractionStart(document.elementFromPoint(t.clientX, t.clientY)); }, { passive: false });
+            gridWrapper.addEventListener('touchmove', e => { e.preventDefault(); const t = e.touches[0]; App.handleInteractionMove(document.elementFromPoint(t.clientX, t.clientY)); }, { passive: false });
+            gridWrapper.addEventListener('touchend', App.handleInteractionEnd);
+            document.addEventListener('keydown', App.handleKeyDown);
+
+            // Theme toggle
+            const themeToggleBtn = document.getElementById('theme-toggle-btn');
+            const setTheme = (theme) => { document.body.classList.toggle('dark-mode', theme === 'dark'); localStorage.setItem('theme', theme); };
+            themeToggleBtn.addEventListener('click', () => setTheme(document.body.classList.contains('dark-mode') ? 'light' : 'dark'));
+            const savedTheme = localStorage.getItem('theme'), prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            setTheme(savedTheme || (prefersDark ? 'dark' : 'light'));
+            
+            window.addEventListener('resize', () => { if (State.grid.length > 0) { clearTimeout(State.debounceTimeout); State.debounceTimeout = setTimeout(()=>this.updateGridDisplay(), 100); } });
+        },
+        
+        setLoading(isLoading, message = '') {
+            document.querySelectorAll('button, select, input').forEach(el => el.disabled = isLoading);
+            this.loader.classList.toggle('hidden', !isLoading);
+            this.loaderText.textContent = message;
+            document.getElementById('cancel-btn').style.display = 'none';
+        },
+
+        updateGridDisplay() {
+            this.grid.style.display = 'none';
+            this.hexGrid.style.display = 'none';
+            if (UI.shapeSelect.value === 'square') {
+                this.grid.style.display = 'grid';
+                this.drawSquareGrid();
+            } else {
+                this.hexGrid.style.display = 'block';
+                this.drawHexGrid();
+            }
+            this.redrawUserPath();
+        },
+        
+        drawSquareGrid() {
+            this.grid.innerHTML = '';
+            const puzzleContainerWidth = document.getElementById('puzzle-container').clientWidth;
+            const gridSize = State.grid.length;
+            let cellSize = Math.floor(puzzleContainerWidth / gridSize);
+            cellSize = Math.max(2, Math.min(cellSize, 40)); 
+            
+            this.grid.style.gridTemplateColumns = `repeat(${gridSize}, ${cellSize}px)`;
+            this.grid.style.gridTemplateRows = `repeat(${gridSize}, ${cellSize}px)`;
+            
+            const wallWidth = Math.max(1, Math.floor(cellSize / 12));
+            document.getElementById('dynamic-grid-styles').innerHTML = `
+                #grid div.wall-top { border-top-width: ${wallWidth}px; border-top-style: solid; }
+                #grid div.wall-right { border-right-width: ${wallWidth}px; border-right-style: solid; }
+                #grid div.wall-bottom { border-bottom-width: ${wallWidth}px; border-bottom-style: solid; }
+                #grid div.wall-left { border-left-width: ${wallWidth}px; border-left-style: solid; }
+                #grid div.keyboard-cursor { box-shadow: inset 0 0 0 ${Math.max(2, wallWidth + 1)}px var(--color-cursor-shadow); }`;
+
+            for (let r = 0; r < gridSize; r++) {
+                for (let c = 0; c < gridSize; c++) {
+                    const cellEl = document.createElement('div');
+                    const cellData = State.grid[r][c];
+                    cellEl.dataset.r = r;
+                    cellEl.dataset.c = c;
+                    cellData.domElement = cellEl;
+                    this.updateCellDisplay(cellData);
+                    this.grid.appendChild(cellEl);
+                }
+            }
+        },
+
+        drawHexGrid() {
+            this.hexGrid.innerHTML = '';
+            const puzzleContainerWidth = document.getElementById('puzzle-container').clientWidth;
+            const radius = Math.floor(UI.gridSizeSelect.value / 2); // This is the "radius" of the hex grid
+            const hexSize = Math.floor(puzzleContainerWidth / (radius * 2)) / 0.8;
+            
+            const hexWidth = hexSize * 2;
+            const hexHeight = Math.sqrt(3) * hexSize;
+
+            for (let r_ax = -radius; r_ax <= radius; r_ax++) {
+                const rowEl = document.createElement('div');
+                rowEl.className = 'hex-row';
+                rowEl.style.marginTop = `-${hexHeight / 8}px`;
+                
+                for (let q_ax = -radius; q_ax <= radius; q_ax++) {
+                    const cellData = App.getCell(q_ax, r_ax);
+                    if (!cellData || (q_ax + r_ax < -radius) || (q_ax + r_ax > radius)) continue;
+
+                    const hexEl = document.createElement('div');
+                    hexEl.className = 'hex';
+                    hexEl.style.width = `${hexWidth / 2}px`;
+                    hexEl.style.height = `${hexHeight / 2}px`;
+                    hexEl.dataset.q = cellData.q;
+                    hexEl.dataset.r = cellData.r;
+                    cellData.domElement = hexEl;
+
+                    // Draw walls
+                    for (let i = 0; i < 6; i++) {
+                        if (cellData.walls[i]) {
+                            const wall = document.createElement('div');
+                            wall.className = 'hex-wall';
+                            const angle = 60 * i - 30;
+                            wall.style.width = `${hexSize / 2}px`;
+                            wall.style.height = `2px`;
+                            wall.style.left = `${hexWidth/4 - hexSize/4}px`;
+                            wall.style.top = `${hexHeight/4 - 1}px`;
+                            wall.style.transform = `rotate(${angle}deg) translate(${hexHeight / 4}px)`;
+                            hexEl.appendChild(wall);
+                        }
+                    }
+                    rowEl.appendChild(hexEl);
+                }
+                this.hexGrid.appendChild(rowEl);
+            }
+            State.grid.flat().forEach(cell => this.updateCellDisplay(cell));
+        },
+
+        updateCellDisplay(cell) {
+            if (!cell || !cell.domElement) return;
+            const el = cell.domElement;
+            el.className = el.className.replace(/start-cell|end-cell|solution-path|user-path|keyboard-cursor/g, '').trim();
+            
+            if (State.startCoords && cell.q === State.startCoords.q && cell.r === State.startCoords.r) el.classList.add('start-cell');
+            if (State.endCoords && cell.q === State.endCoords.q && cell.r === State.endCoords.r) el.classList.add('end-cell');
+        },
+
+        redrawUserPath() {
+            document.querySelectorAll('.user-path, .keyboard-cursor, .solution-path').forEach(el => {
+                el.classList.remove('user-path', 'keyboard-cursor', 'solution-path');
+            });
+
+            State.userPath.forEach(p => {
+                const cell = App.getCell(p.q, p.r);
+                if (cell && cell.domElement) cell.domElement.classList.add('user-path');
+            });
+
+            if (State.userPath.length > 0) {
+                const lastPos = State.userPath[State.userPath.length - 1];
+                const cursorCell = App.getCell(lastPos.q, lastPos.r);
+                if (cursorCell && cursorCell.domElement) cursorCell.domElement.classList.add('keyboard-cursor');
+            }
+        },
+        
+        revealSolution() {
+            if (State.solutionPath.length === 0 || State.isAnimating) return;
+            State.isAnimating = true;
+            this.revealBtn.disabled = true;
+            State.animationToken++;
+            const currentToken = State.animationToken;
+
+            let i = 0;
+            const animate = () => {
+                if (i < State.solutionPath.length && currentToken === State.animationToken) {
+                    const pos = State.solutionPath[i];
+                    const cell = App.getCell(pos.q, pos.r);
+                    if (cell && cell.domElement) cell.domElement.classList.add('solution-path');
+                    i++;
+                    requestAnimationFrame(animate);
+                } else {
+                    State.isAnimating = false;
+                }
+            };
+            animate();
+        },
+
+        showBookOptions() { this.mainControls.style.display = 'none'; this.generateBookControls.style.display = 'block'; this.globalOptions.style.display = 'none'; },
+        resetBookUI() { this.mainControls.style.display = 'grid'; this.generateBookControls.style.display = 'none'; this.globalOptions.style.display = 'grid'; },
+        
+        showCompletionModal(timeTaken) {
+            const bestTime = localStorage.getItem(State.puzzleConfigKey);
+            let isNewBest = false;
+            if (bestTime === null || timeTaken < parseInt(bestTime, 10)) {
+                localStorage.setItem(State.puzzleConfigKey, timeTaken);
+                isNewBest = true;
+            }
+            document.getElementById('your-time').textContent = `Your time: ${Utils.formatTime(timeTaken)}`;
+            document.getElementById('best-time').textContent = `Best time: ${Utils.formatTime(localStorage.getItem(State.puzzleConfigKey))}`;
+            document.getElementById('new-best-time').textContent = isNewBest ? 'New Best Time!' : '';
+            this.completionModal.classList.add('visible');
+            this.revealBtn.disabled = true;
+        },
+        
+        hideCompletionModal() { this.completionModal.classList.remove('visible'); }
+    };
+
+    const App = {
+        init() {
+            UI.init();
+            this.triggerGeneratePuzzle();
+        },
+        
+        triggerGeneratePuzzle(isDebounced = false) {
+            clearTimeout(State.debounceTimeout);
+            State.debounceTimeout = setTimeout(() => this.generatePuzzle(), isDebounced ? 400 : 20);
+        },
+
+        async generatePuzzle(isForBook = false, bookOptions = {}) {
+            State.animationToken++;
+            State.isAnimating = false;
+            
+            const shape = isForBook ? bookOptions.shape : UI.shapeSelect.value;
+            const size = parseInt(isForBook ? bookOptions.size : UI.gridSizeSelect.value, 10);
+            const mazeType = isForBook ? bookOptions.type : UI.mazeTypeSelect.value;
+            const gameMode = isForBook ? bookOptions.mode : UI.gameModeSelect.value;
+            let seed = isForBook ? bookOptions.seed : (UI.seedInput.value.trim() || Date.now().toString());
+            
+            State.rng = Utils.mulberry32(Utils.cyrb128(seed));
+
+            if (!isForBook) {
+                UI.setLoading(true, "Generating Maze...");
+                UI.hideCompletionModal();
+            }
+
+            State.userPath = [];
+            State.solutionPath = [];
+            State.startTime = null;
+            if (!isForBook) UI.revealBtn.disabled = false;
+
+            await Utils.sleep(30);
+
+            try {
+                // *** THIS IS THE FIX ***
+                // Call the generator function directly on the Algorithms object
+                // to preserve the 'this' context.
+                State.grid = Algorithms[mazeType](size, shape);
+                
+                if (gameMode === 'longest_path') {
+                    const { start, end, path } = Pathfinding.findLongestPath(State.grid);
+                    State.startCoords = start;
+                    State.endCoords = end;
+                    State.solutionPath = path;
+                } else {
+                    State.startCoords = State.grid.flat()[0];
+                    const gridCells = State.grid.flat();
+                    State.endCoords = gridCells[gridCells.length - 1];
+                    State.solutionPath = Pathfinding.findSolutionPath(State.grid, State.startCoords, State.endCoords);
+                }
+                
+                State.userPath.push(State.startCoords);
+                
+                const mazeTypeName = UI.mazeTypeSelect.options[UI.mazeTypeSelect.selectedIndex].text;
+                const title = `${mazeTypeName} Maze ${size}x${size}`;
+
+                if (!isForBook) {
+                    State.puzzleConfigKey = `${shape}-${size}-${mazeType}-${gameMode}-${seed}`;
+                    UI.status.textContent = `Type: ${mazeTypeName} | Shape: ${shape}`;
+                    UI.updateGridDisplay();
+                    document.getElementById('grid-wrapper').style.visibility = 'visible';
+                    document.getElementById('instructions-container').style.visibility = 'visible';
+                    State.startTime = Date.now();
+                }
+                
+                return { grid: State.grid, solution: State.solutionPath, title, seed, size, type: mazeType, shape, start: State.startCoords, end: State.endCoords };
+
+            } catch (error) {
+                if (error.message !== "Animation cancelled") {
+                    UI.status.textContent = `Error: ${error.message}`;
+                    console.error(error);
+                }
+                return null;
+            } finally {
+                if (!isForBook) UI.setLoading(false);
+            }
+        },
+        
+        handleInteractionStart(target) {
+            if (!target || State.isDrawing || State.isAnimating) return;
+            const cell = this.getCellFromElement(target);
+            if(cell && cell.q === State.startCoords.q && cell.r === State.startCoords.r) {
+                State.isDrawing = true;
+                State.userPath = [cell];
+                UI.redrawUserPath();
+            }
+        },
+
+        handleInteractionMove(target) {
+            if (!State.isDrawing || !target || State.isAnimating) return;
+            const cell = this.getCellFromElement(target);
+            if (!cell) return;
+            
+            const lastPos = State.userPath[State.userPath.length - 1];
+            if (cell.q === lastPos.q && cell.r === lastPos.r) return;
+
+            // Backtracking
+            if (State.userPath.length > 1 && State.userPath[State.userPath.length - 2].q === cell.q && State.userPath[State.userPath.length - 2].r === cell.r) {
+                 State.userPath.pop();
+            } else {
+                // Check for valid move (no wall between)
+                const lastCell = this.getCell(lastPos.q, lastPos.r);
+                const wallIndex = this.getNeighborDirection(lastCell, cell);
+                if (wallIndex !== -1 && !lastCell.walls[wallIndex]) {
+                    State.userPath.push(cell);
+                }
+            }
+
+            UI.redrawUserPath();
+            if (cell.q === State.endCoords.q && cell.r === State.endCoords.r) {
+                this.handleInteractionEnd();
+            }
+        },
+
+        handleInteractionEnd() {
+            if (!State.isDrawing) return;
+            State.isDrawing = false;
+            const lastPos = State.userPath[State.userPath.length - 1];
+            if (lastPos && lastPos.q === State.endCoords.q && lastPos.r === State.endCoords.r) {
+                UI.showCompletionModal(Date.now() - State.startTime);
+            }
+        },
+        
+        handleKeyDown(e) {
+            if (document.activeElement.tagName === 'INPUT' || State.isDrawing || State.isAnimating || State.userPath.length === 0) return;
+            
+            const isSquare = UI.shapeSelect.value === 'square';
+            const keyMap = isSquare
+                ? { 'ArrowUp': 0, 'ArrowRight': 1, 'ArrowDown': 2, 'ArrowLeft': 3 }
+                : { 'e': 5, 'd': 0, 's': 1, 'a': 2, 'q': 3, 'w': 4 }; // Hex keys using axial directions (NE, E, SE, SW, W, NW)
+
+
+            if (e.key.toLowerCase() === 'r') {
+                e.preventDefault();
+                UI.revealSolution();
+                return;
+            }
+
+            const key = e.key.toLowerCase();
+            if(!Object.keys(keyMap).map(k=>k.toLowerCase()).includes(key)) return;
+            e.preventDefault();
+
+            const wallIndex = keyMap[e.key] ?? keyMap[e.key.toLowerCase()];
+            const lastPos = State.userPath[State.userPath.length - 1];
+            const lastCell = this.getCell(lastPos.q, lastPos.r);
+            
+            const neighbor = lastCell.neighbors[wallIndex];
+            
+            // Backtracking
+            if(State.userPath.length > 1 && neighbor && neighbor.q === State.userPath[State.userPath.length-2].q && neighbor.r === State.userPath[State.userPath.length-2].r){
+                State.userPath.pop();
+            } else if (neighbor && !lastCell.walls[wallIndex]) {
+                 State.userPath.push(neighbor);
+            }
+            
+            UI.redrawUserPath();
+            const newLastPos = State.userPath[State.userPath.length - 1];
+            if (newLastPos.q === State.endCoords.q && newLastPos.r === State.endCoords.r) {
+                UI.showCompletionModal(Date.now() - State.startTime);
+            }
+        },
+
+        getCell(q, r) {
+            const shape = UI.shapeSelect.value;
+             if (shape === 'square') {
+                return State.grid[q] ? State.grid[q][r] : null; // q=r, r=c for square
+             } else { // Hexagon
+                return State.grid.flat().find(cell => cell && cell.q === q && cell.r === r);
+             }
+        },
+        
+        getCellFromElement(el) {
+            const element = el.closest('[data-q], [data-r]');
+            if (!element) return null;
+            
+            const r_val = element.dataset.r;
+            const q_val = element.dataset.q ?? r_val; // For squares, q is not present, so use r
+
+            const q = parseInt(q_val, 10);
+            const r = parseInt(r_val, 10);
+
+            return this.getCell(q,r);
+        },
+        
+        getNeighborDirection(cell, neighbor) {
+            for (let i=0; i < cell.neighbors.length; i++) {
+                const n = cell.neighbors[i];
+                if (n && n.q === neighbor.q && n.r === neighbor.r) {
+                    return i;
+                }
+            }
+            return -1;
+        },
+
+        cancelBookGeneration() { State.isGeneratingBook = false; }
+    };
+
+    const Algorithms = {
+        _createSquareGrid(size) {
+            const grid = Array(size).fill(null).map((_, r) => Array(size).fill(null).map((_, c) => ({
+                q: r, r: c, // Use q/r internally for consistency (q=row, r=col)
+                walls: [true, true, true, true], // T, R, B, L
+                visited: false
+            })));
+             grid.forEach((row, r) => row.forEach((cell, c) => {
+                cell.neighbors = [
+                    (grid[r-1]||[])[c], (grid[r]||[])[c+1], (grid[r+1]||[])[c], (grid[r]||[])[c-1]
+                ];
+            }));
+            return grid;
+        },
+        _createHexGrid(radius) {
+            const grid = [];
+            for (let q = -radius; q <= radius; q++) {
+                for (let r = -radius; r <= radius; r++) {
+                    if (q + r > -radius-1 && q + r < radius+1) {
+                         grid.push({ q, r, walls: [true,true,true,true,true,true], visited: false, neighbors: [] });
+                    }
+                }
+            }
+            const findCell = (q,r) => grid.find(c => c.q === q && c.r === r);
+            grid.forEach(cell => {
+                // Axial directions: E, SE, SW, W, NW, NE
+                const axial_directions = [ {q:1,r:0}, {q:0,r:1}, {q:-1,r:1}, {q:-1,r:0}, {q:0,r:-1}, {q:1,r:-1} ];
+                cell.neighbors = axial_directions.map(dir => findCell(cell.q + dir.q, cell.r + dir.r));
+            });
+            return [grid]; // Return as [[]] for flat() to work
+        },
+        _removeWall(a, b) {
+            if(!a || !b) return;
+            const a_i = a.neighbors.findIndex(n => n && n.q === b.q && n.r === b.r);
+            if (a_i !== -1) a.walls[a_i] = false;
+            const b_i = b.neighbors.findIndex(n => n && n.q === a.q && n.r === a.r);
+            if (b_i !== -1) b.walls[b_i] = false;
+        },
+        
+        backtracker(size, shape) {
+            const grid = shape === 'square' ? this._createSquareGrid(size) : this._createHexGrid(Math.floor(size/2));
+            const cells = grid.flat();
+            const stack = [cells[0]];
+            cells[0].visited = true;
+
+            while (stack.length > 0) {
+                const current = stack[stack.length - 1];
+                const unvisited = current.neighbors.filter(n => n && !n.visited);
+                if (unvisited.length > 0) {
+                    const neighbor = unvisited[Math.floor(State.rng() * unvisited.length)];
+                    this._removeWall(current, neighbor);
+                    neighbor.visited = true;
+                    stack.push(neighbor);
+                } else {
+                    stack.pop();
+                }
+            }
+            return grid;
+        },
+        
+        prim(size, shape) {
+            const grid = shape === 'square' ? this._createSquareGrid(size) : this._createHexGrid(Math.floor(size/2));
+            const cells = grid.flat();
+            const startCell = cells[Math.floor(State.rng() * cells.length)];
+            startCell.visited = true;
+            
+            const frontier = startCell.neighbors.filter(n => n);
+
+            while(frontier.length > 0) {
+                const fIndex = Math.floor(State.rng() * frontier.length);
+                const current = frontier.splice(fIndex, 1)[0];
+                if (current.visited) continue;
+                
+                const visitedNeighbors = current.neighbors.filter(n => n && n.visited);
+                if (visitedNeighbors.length > 0) {
+                    const neighbor = visitedNeighbors[Math.floor(State.rng() * visitedNeighbors.length)];
+                    this._removeWall(current, neighbor);
+                    current.visited = true;
+
+                    current.neighbors.forEach(n => {
+                        if (n && !n.visited && !frontier.some(f => f.q === n.q && f.r === n.r)) {
+                            frontier.push(n);
+                        }
+                    });
+                }
+            }
+            return grid;
+        },
+
+        kruskal(size, shape) {
+             const grid = shape === 'square' ? this._createSquareGrid(size) : this._createHexGrid(Math.floor(size/2));
+             const cells = grid.flat();
+             const edges = [];
+             cells.forEach(cell => {
+                cell.neighbors.forEach((neighbor, i) => {
+                    if (neighbor) {
+                        const edgeExists = edges.some(e => (e.a === cell && e.b === neighbor) || (e.a === neighbor && e.b === cell));
+                        if (!edgeExists) edges.push({ a: cell, b: neighbor });
+                    }
+                });
+             });
+             
+             for(let i = edges.length - 1; i > 0; i--){
+                const j = Math.floor(State.rng() * (i + 1));
+                [edges[i], edges[j]] = [edges[j], edges[i]];
+            }
+            
+            const sets = new Map(cells.map(c => [c, new Set([c])]));
+            
+            for (const edge of edges) {
+                const setA = sets.get(edge.a);
+                const setB = sets.get(edge.b);
+                if (setA !== setB) {
+                    this._removeWall(edge.a, edge.b);
+                    const union = new Set([...setA, ...setB]);
+                    union.forEach(cell => sets.set(cell, union));
+                }
+            }
+             return grid;
+        },
+        
+        binary(size, shape) { // square only
+            const grid = this._createSquareGrid(size);
+            grid.forEach(row => row.forEach(cell => {
+                const neighbors = [];
+                if(cell.neighbors[0]) neighbors.push(cell.neighbors[0]); // North
+                if(cell.neighbors[3]) neighbors.push(cell.neighbors[3]); // West
+
+                if(neighbors.length > 0) {
+                    const neighbor = neighbors[Math.floor(State.rng() * neighbors.length)];
+                    this._removeWall(cell, neighbor);
+                }
+            }));
+            return grid;
+        },
+
+        wilsons(size, shape) { // square only
+            const grid = this._createSquareGrid(size);
+            const cells = grid.flat();
+            const unvisited = new Set(cells);
+            
+            const first = cells[Math.floor(State.rng() * cells.length)];
+            unvisited.delete(first);
+
+            while(unvisited.size > 0) {
+                let current = [...unvisited][Math.floor(State.rng() * unvisited.size)];
+                let path = [current];
+
+                while(unvisited.has(current)) {
+                    const neighbors = current.neighbors.filter(n => n);
+                    current = neighbors[Math.floor(State.rng() * neighbors.length)];
+                    const existingIndex = path.findIndex(p => p.q === current.q && p.r === current.r);
+
+                    if (existingIndex !== -1) {
+                        path.splice(existingIndex + 1);
+                    } else {
+                        path.push(current);
+                    }
+                }
+
+                for (let i = 0; i < path.length - 1; i++) {
+                    this._removeWall(path[i], path[i+1]);
+                    unvisited.delete(path[i]);
+                }
+            }
+            return grid;
+        }
+
+    };
+    
+    const Pathfinding = {
+        _bfs(grid, startNode) {
+            const cells = grid.flat();
+            const distances = new Map(cells.map(c => [c, Infinity]));
+            const queue = [{ node: startNode, dist: 0 }];
+            distances.set(startNode, 0);
+
+            let head = 0;
+            while(head < queue.length){
+                const {node, dist} = queue[head++];
+                for(let i=0; i < node.neighbors.length; i++){
+                    if(!node.walls[i] && node.neighbors[i]){
+                        const neighbor = node.neighbors[i];
+                        if(distances.get(neighbor) === Infinity){
+                            distances.set(neighbor, dist + 1);
+                            queue.push({ node: neighbor, dist: dist + 1 });
+                        }
+                    }
+                }
+            }
+            return distances;
+        },
+
+        findLongestPath(grid) {
+            const cells = grid.flat();
+            const startNode = cells[0];
+            const dists1 = this._bfs(grid, startNode);
+            
+            let maxDist1 = 0;
+            let farthestNodeA = startNode;
+            for(const [node, dist] of dists1.entries()){
+                if(dist > maxDist1){
+                    maxDist1 = dist;
+                    farthestNodeA = node;
+                }
+            }
+
+            const dists2 = this._bfs(grid, farthestNodeA);
+             let maxDist2 = 0;
+            let farthestNodeB = farthestNodeA;
+            for(const [node, dist] of dists2.entries()){
+                if(dist > maxDist2){
+                    maxDist2 = dist;
+                    farthestNodeB = node;
+                }
+            }
+            
+            const path = this.findSolutionPath(grid, farthestNodeA, farthestNodeB);
+            return { start: farthestNodeA, end: farthestNodeB, path };
+        },
+
+        findSolutionPath(grid, start, end) {
+            const queue = [[start]];
+            const visited = new Set([`${start.q},${start.r}`]);
+
+            while (queue.length > 0) {
+                const path = queue.shift();
+                const lastNode = path[path.length - 1];
+
+                if (lastNode.q === end.q && lastNode.r === end.r) return path;
+
+                for (let i = 0; i < lastNode.neighbors.length; i++) {
+                    if (!lastNode.walls[i]) {
+                        const neighbor = lastNode.neighbors[i];
+                        if (neighbor) {
+                             const key = `${neighbor.q},${neighbor.r}`;
+                             if (!visited.has(key)) {
+                                visited.add(key);
+                                const newPath = [...path, neighbor];
+                                queue.push(newPath);
+                            }
+                        }
+                    }
+                }
+            }
+            return []; // No path found
+        }
+    };
+    
+    const PDF = {
+        async downloadBook() {
+            const puzzleCount = parseInt(document.getElementById('puzzle-count-input').value, 10);
+            if(isNaN(puzzleCount) || puzzleCount < 1 || puzzleCount > 100){ alert("Please enter a number of mazes between 1 and 100."); return; }
+
+            const includeSolutions = document.getElementById('answer-key-checkbox').checked;
+            const includePageNos = document.getElementById('page-numbers-checkbox').checked;
+            const bookTitle = document.getElementById('book-title-input').value.trim();
+            const bookSubtitle = document.getElementById('book-subtitle-input').value.trim();
+            
+            UI.grid.innerHTML = '';
+            UI.hexGrid.innerHTML = '';
+            document.getElementById('instructions-container').style.visibility = 'hidden';
+            State.isGeneratingBook = true;
+            UI.setLoading(true, "Preparing Book...");
+            UI.loader.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            document.getElementById('cancel-btn').style.display = 'block';
+            document.getElementById('cancel-btn').disabled = false;
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            doc.deletePage(1);
+            
+            const allPuzzleData = [];
+
+            try {
+                if(bookTitle){
+                    doc.addPage();
+                    const pageWidth = doc.internal.pageSize.getWidth();
+                    const pageHeight = doc.internal.pageSize.getHeight();
+                    doc.setFont('helvetica', 'bold').setFontSize(30).text(bookTitle, pageWidth / 2, pageHeight / 2 - 10, { align: 'center' });
+                    if(bookSubtitle) doc.setFont('helvetica', 'normal').setFontSize(16).text(bookSubtitle, pageWidth / 2, pageHeight / 2 + 5, { align: 'center' });
+                }
+
+                for(let i=1; i <= puzzleCount; i++){
+                    if(!State.isGeneratingBook) throw new Error("Cancelled");
+                    UI.loaderText.textContent = `Generating Maze ${i} of ${puzzleCount}...`;
+                    
+                    const options = {
+                        shape: UI.shapeSelect.value,
+                        size: UI.gridSizeSelect.value,
+                        type: UI.mazeTypeSelect.value,
+                        mode: UI.gameModeSelect.value,
+                        seed: (UI.seedInput.value.trim() || Date.now().toString()) + i
+                    };
+
+                    const puzzleData = await App.generatePuzzle(true, options);
+                    puzzleData.title = `Maze ${i}`;
+                    allPuzzleData.push(puzzleData);
+                    
+                    doc.addPage();
+                    this._drawMazeOnPdfPage(doc, puzzleData, false, i, includePageNos);
+                }
+
+                if(includeSolutions && allPuzzleData.length > 0) {
+                     UI.loaderText.textContent = "Generating Maze Solutions...";
+                     await Utils.sleep(50);
+                     this._drawMazeSolutions(doc, allPuzzleData);
+                }
+                
+                const safeTitle = (bookTitle.replace(/[^a-zA-Z0-9]/g, '-') || `Maze-Book-${puzzleCount}-Mazes`).substring(0, 50);
+                doc.save(`${safeTitle}.pdf`);
+                UI.status.textContent = "Book successfully generated!";
+
+            } catch(e) {
+                if (e.message === "Cancelled") UI.status.textContent = "Book generation cancelled.";
+                else UI.status.textContent = `Error: ${e.message}`;
+            } finally {
+                State.isGeneratingBook = false;
+                UI.setLoading(false);
+                UI.resetBookUI();
+                App.triggerGeneratePuzzle();
+            }
+        },
+
+        downloadSinglePdf() {
+            if (State.grid.length === 0) { alert("Please generate a maze first."); return; }
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const typeName = UI.mazeTypeSelect.options[UI.mazeTypeSelect.selectedIndex].text;
+            this._drawMazeOnPdfPage(doc, {
+                grid: State.grid,
+                solution: State.solutionPath,
+                title: `${typeName} ${UI.gridSizeSelect.value}x${UI.gridSizeSelect.value}`,
+                shape: UI.shapeSelect.value,
+                start: State.startCoords,
+                end: State.endCoords
+            }, false, null, false);
+            doc.save(`Maze-${UI.gridSizeSelect.value}x${UI.gridSizeSelect.value}-${UI.mazeTypeSelect.value}.pdf`);
+        },
+
+        _drawMazeOnPdfPage(doc, puzzleData, showSolution, pageNum, includePageNos) {
+            const { grid, solution, title, shape, seed, type, size, start, end } = puzzleData;
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const margin = 15;
+            let currentY = margin;
+
+            doc.setFont('helvetica', 'bold').setFontSize(16).text(title, pageWidth / 2, currentY, { align: 'center' });
+            currentY += 10;
+            
+            if (pageNum && seed) {
+                const url = `${window.location.origin}${window.location.pathname}?shape=${shape}&size=${size}&type=${type}&seed=${seed}`;
+                const qr = new QRious({ value: url, size: 200 });
+                doc.addImage(qr.toDataURL(), 'PNG', margin, currentY, 30, 30);
+
+                doc.setFont('helvetica', 'normal').setFontSize(9);
+                doc.text(`Size: ${size}x${size}`, margin + 35, currentY + 10);
+                const typeName = type.charAt(0).toUpperCase() + type.slice(1);
+                doc.text(`Algo: ${typeName}`, margin + 35, currentY + 15);
+                doc.text(`Seed: ${seed.substring(0, 15)}${seed.length > 15 ? '...' : ''}`, margin + 35, currentY + 20);
+                currentY += 35;
+            }
+
+            const mazeSize = 170;
+            const startX = (pageWidth - mazeSize) / 2;
+            const startY = currentY;
+
+            if (shape === 'square') {
+                this._drawSquareMazePdf(doc, grid, solution, startX, startY, mazeSize, showSolution, start, end);
+            } else {
+                this._drawHexMazePdf(doc, grid, solution, startX, startY, mazeSize, showSolution, start, end);
+            }
+
+            if (includePageNos && pageNum) {
+                doc.setFont('helvetica', 'normal').setFontSize(8).text(String(pageNum), pageWidth / 2, pageHeight - margin / 2, { align: 'center' });
+            }
+        },
+        
+        _drawSquareMazePdf(doc, grid, solution, startX, startY, mazeSize, showSolution, startCell, endCell) {
+            const gridSize = grid.length;
+            const cellSize = mazeSize / gridSize;
+
+            if (showSolution) {
+                doc.setFillColor(255, 193, 7); // Yellow
+                solution.forEach(p => doc.rect(startX + p.r * cellSize, startY + p.q * cellSize, cellSize, cellSize, 'F'));
+            }
+            
+            doc.setFillColor(40, 167, 69).rect(startX + startCell.r * cellSize, startY + startCell.q * cellSize, cellSize, cellSize, 'F');
+            doc.setFillColor(220, 53, 69).rect(startX + endCell.r * cellSize, startY + endCell.q * cellSize, cellSize, cellSize, 'F');
+
+            doc.setDrawColor(0).setLineWidth(0.5);
+            grid.forEach((row, r) => row.forEach((cell, c) => {
+                const cellX = startX + c * cellSize;
+                const cellY = startY + r * cellSize;
+                if (cell.walls[0]) doc.line(cellX, cellY, cellX + cellSize, cellY);
+                if (cell.walls[1]) doc.line(cellX + cellSize, cellY, cellX + cellSize, cellY + cellSize);
+                if (cell.walls[2]) doc.line(cellX, cellY + cellSize, cellX + cellSize, cellY + cellSize);
+                if (cell.walls[3]) doc.line(cellX, cellY, cellX, cellY + cellSize);
+            }));
+        },
+        
+        _drawHexMazePdf(doc, grid, solution, startX, startY, mazeSize, showSolution, startCell, endCell) {
+            const allCells = grid.flat();
+            const q_coords = allCells.map(c => c.q);
+            const r_coords = allCells.map(c => c.r);
+            const q_min = Math.min(...q_coords), q_max = Math.max(...q_coords);
+            const r_min = Math.min(...r_coords), r_max = Math.max(...r_coords);
+
+            const hex_radius_q = (q_max - q_min);
+            const hex_radius_r = (r_max - r_min);
+
+            const hexSideLength = Math.min(mazeSize / (hex_radius_q * 1.5), mazeSize / (hex_radius_r * Math.sqrt(3))) / 2;
+            const hexHeight = 2 * hexSideLength;
+            const hexWidth = Math.sqrt(3) * hexSideLength;
+            
+            const centerOffsetX = startX + mazeSize/2 - (q_min + q_max)/2 * hexWidth*0.75;
+            const centerOffsetY = startY + mazeSize/2 - (r_min + r_max)/2 * hexHeight*0.85;
+
+            const drawHex = (cx, cy) => {
+                const points = [];
+                for(let i=0; i<6; i++) {
+                    const angle = Math.PI / 180 * (60 * i + 30);
+                    points.push([cx + hexSideLength * Math.cos(angle), cy + hexSideLength * Math.sin(angle)]);
+                }
+                return points;
+            };
+
+             const getCellCenter = (cell) => {
+                const cx = centerOffsetX + cell.q * hexWidth * 0.75;
+                const cy = centerOffsetY + (cell.r + cell.q / 2) * hexHeight * 0.75;
+                return { cx, cy };
+            };
+
+            if(showSolution) {
+                doc.setFillColor(255, 193, 7);
+                solution.forEach(p => {
+                    const {cx, cy} = getCellCenter(p);
+                    doc.polygon(drawHex(cx, cy), 'F');
+                });
+            }
+            
+            const start_center = getCellCenter(startCell);
+            doc.setFillColor(40,167,69);
+            doc.polygon(drawHex(start_center.cx, start_center.cy), 'F');
+            
+            const end_center = getCellCenter(endCell);
+            doc.setFillColor(220,53,69);
+            doc.polygon(drawHex(end_center.cx, end_center.cy), 'F');
+
+             doc.setDrawColor(0).setLineWidth(0.2);
+             allCells.forEach(cell => {
+                const {cx, cy} = getCellCenter(cell);
+                const points = drawHex(cx, cy);
+
+                for (let i = 0; i < 6; i++) {
+                    if (cell.walls[i]) {
+                        doc.line(points[i][0], points[i][1], points[(i + 1) % 6][0], points[(i + 1) % 6][1]);
+                    }
+                }
+             });
+
+        },
+        
+        _drawMazeSolutions(doc, allPuzzleData) {
+            doc.addPage();
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const margin = 15;
+            doc.setFont('helvetica', 'bold').setFontSize(20).text("Maze Solutions", pageWidth / 2, margin, { align: 'center' });
+            
+            const puzzlesPerPage = 6, cols = 2, rows = 3;
+            const boxWidth = (pageWidth - margin * 2) / cols;
+            const boxHeight = (pageHeight - margin * 2 - 10) / rows;
+
+            allPuzzleData.forEach((puzzleData, index) => {
+                if (index > 0 && index % puzzlesPerPage === 0) {
+                    doc.addPage();
+                    doc.setFont('helvetica', 'bold').setFontSize(20).text("Maze Solutions", pageWidth / 2, margin, { align: 'center' });
+                }
+                
+                const i = index % puzzlesPerPage;
+                const col = i % cols;
+                const row = Math.floor(i / cols);
+                const startBoxX = margin + col * boxWidth;
+                const startBoxY = margin + 10 + row * boxHeight;
+
+                doc.setFont('helvetica', 'bold').setFontSize(10).text(puzzleData.title, startBoxX + boxWidth / 2, startBoxY + 8, { align: 'center' });
+                
+                const mazeSize = Math.min(boxWidth - 10, boxHeight - 20);
+                const startX = startBoxX + (boxWidth - mazeSize) / 2;
+                const startY = startBoxY + 12;
+
+                if (puzzleData.shape === 'square') {
+                    this._drawSquareMazePdf(doc, puzzleData.grid, puzzleData.solution, startX, startY, mazeSize, true, puzzleData.start, puzzleData.end);
+                } else {
+                    this._drawHexMazePdf(doc, puzzleData.grid, puzzleData.solution, startX, startY, mazeSize, true, puzzleData.start, puzzleData.end);
                 }
             });
         }
