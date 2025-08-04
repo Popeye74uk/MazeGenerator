@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Maze Generator v0.5</title>
+    <title>Maze Generator v0.6</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         /* CSS Variables for Theming */
@@ -91,10 +91,12 @@
         #instructions-list li { padding: 4px 0; font-size: 0.95em; color: var(--color-text-primary); }
 
         .controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; max-width: 415px; margin: 25px auto 0 auto; }
-        .global-options-container { display: grid; grid-template-columns: 1fr 1fr; gap: 15px 25px; max-width: 500px; margin: 25px auto -10px auto; align-items: center; }
+        .global-options-container { display: grid; grid-template-columns: 1fr 1fr; gap: 15px 25px; max-width: 550px; margin: 25px auto -10px auto; align-items: center; }
         .option-group { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
         .option-group label { font-weight: bold; }
-        .option-group select, .option-group input { flex-grow: 1; min-width: 80px; padding: 6px; }
+        .option-group select, .option-group input { flex-grow: 1; width: 100%; min-width: 80px; padding: 8px; font-size: 0.9em; box-sizing: border-box; }
+        .seed-group { display: flex; align-items: center; }
+        #random-seed-btn { padding: 8px 10px; font-size: 1em; margin-left: 8px; background: var(--color-text-secondary); border: none; color: white; cursor: pointer; border-radius: 5px; flex-shrink: 0; }
 
         button { padding: 12px 20px; font-size: 1em; font-weight: bold; cursor: pointer; color: white; border: none; border-radius: 5px; transition: all 0.2s; box-shadow: 0 2px 4px var(--color-box-shadow); width: 100%; box-sizing: border-box; }
         button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 8px var(--color-box-shadow-hover); }
@@ -184,7 +186,7 @@
         
         <div class="global-options-container" id="global-options-container">
             <div class="option-group">
-                <label for="grid-size-select">Grid Size:</label>
+                <label for="grid-size-select">Size:</label>
                 <select id="grid-size-select" onchange="triggerGeneratePuzzle()">
                     <option value="15">15x15</option>
                     <option value="20" selected>20x20</option>
@@ -195,16 +197,21 @@
                 </select>
             </div>
             <div class="option-group">
-                <label for="maze-type-select">Maze Type:</label>
+                <label for="maze-type-select">Maze:</label>
                 <select id="maze-type-select" onchange="triggerGeneratePuzzle()">
-                    <option value="backtracker" selected>DFS Backtracker</option>
+                    <option value="binary">Binary Tree (Easy)</option>
                     <option value="prim">Prim's Algorithm</option>
-                    <option value="binary">Binary Tree</option>
+                    <option value="kruskal">Kruskal's Algorithm</option>
+                    <option value="backtracker" selected>DFS Backtracker (Hard)</option>
+                    <option value="wilsons">Wilson's Algorithm (Expert)</option>
                 </select>
             </div>
             <div class="option-group">
                 <label for="seed-input">Seed:</label>
-                <input type="text" id="seed-input" oninput="triggerGeneratePuzzle(true)" placeholder="Any text for repeatable maze">
+                <div class="seed-group">
+                    <input type="text" id="seed-input" oninput="triggerGeneratePuzzle(true)" placeholder="Repeatable maze text">
+                    <button id="random-seed-btn" title="Random Seed">🎲</button>
+                </div>
             </div>
         </div>
 
@@ -241,7 +248,7 @@
 
 
         <div id="status-container"><p id="source-status"></p></div>
-        <div id="version-info">v0.5</div>
+        <div id="version-info">v0.6</div>
     </div>
 
     <div id="completion-modal" onclick="hideCompletionModal()">
@@ -264,7 +271,7 @@
 
         let startTime;
         let puzzleConfigKey;
-        let rng; // The pseudo-random number generator function
+        let rng; 
 
         let isDrawing = false;
         let userPath = [];
@@ -278,6 +285,7 @@
               gridSizeSelect = document.getElementById('grid-size-select'),
               mazeTypeSelect = document.getElementById('maze-type-select'),
               seedInput = document.getElementById('seed-input'),
+              randomSeedBtn = document.getElementById('random-seed-btn'),
               mainControls = document.getElementById('main-controls'),
               generateBookControls = document.getElementById('generate-book-controls'),
               cancelBtn = document.getElementById('cancel-btn'),
@@ -288,56 +296,32 @@
               completionModal = document.getElementById('completion-modal');
         
         // --- SEEDED RNG ---
-        function cyrb128(str) {
-            let h1 = 1779033703, h2 = 3144134277, h3 = 1013904242, h4 = 2773480762;
-            for (let i = 0, k; i < str.length; i++) {
-                k = str.charCodeAt(i);
-                h1 = h2 ^ Math.imul(h1 ^ k, 597399067);
-                h2 = h3 ^ Math.imul(h2 ^ k, 2869860233);
-                h3 = h4 ^ Math.imul(h3 ^ k, 951274213);
-                h4 = h1 ^ Math.imul(h4 ^ k, 2716044179);
-            }
-            h1 = Math.imul(h3 ^ (h1 >>> 18), 597399067);
-            h2 = Math.imul(h4 ^ (h2 >>> 22), 2869860233);
-            h3 = Math.imul(h1 ^ (h3 >>> 17), 951274213);
-            h4 = Math.imul(h2 ^ (h4 >>> 19), 2716044179);
-            return (h1^h2^h3^h4)>>>0;
-        }
-
-        function mulberry32(a) {
-            return function() {
-              var t = a += 0x6D2B79F5;
-              t = Math.imul(t ^ t >>> 15, t | 1);
-              t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-              return ((t ^ t >>> 14) >>> 0) / 4294967296;
-            }
-        }
+        function cyrb128(str) { let h1=1779033703,h2=3144134277,h3=1013904242,h4=2773480762; for (let i=0,k;i<str.length;i++){k=str.charCodeAt(i);h1=h2^Math.imul(h1^k,597399067);h2=h3^Math.imul(h2^k,2869860233);h3=h4^Math.imul(h3^k,951274213);h4=h1^Math.imul(h4^k,2716044179)} h1=Math.imul(h3^(h1>>>18),597399067);h2=Math.imul(h4^(h2>>>22),2869860233);h3=Math.imul(h1^(h3>>>17),951274213);h4=Math.imul(h2^(h4>>>19),2716044179); return(h1^h2^h3^h4)>>>0 }
+        function mulberry32(a){ return function(){let t=a+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296} }
         
         // --- MAZE GENERATION ---
 
         function triggerGeneratePuzzle(isDebounced = false) {
             clearTimeout(debounceTimeout);
-            debounceTimeout = setTimeout(() => generatePuzzle(), isDebounced ? 400 : 0);
+            debounceTimeout = setTimeout(() => generatePuzzle(), isDebounced ? 400 : 20);
         }
 
         async function generatePuzzle(isForBook = false) {
             gridSize = parseInt(gridSizeSelect.value, 10);
             const mazeType = mazeTypeSelect.value;
             let seed = seedInput.value.trim();
-            if (seed === '') { seed = Date.now().toString(); }
+            if (seed === '' && !isForBook) { seed = Date.now().toString(); } 
+            else if(seed === '' && isForBook) { seed = Date.now().toString() + Math.random(); } // Ensure book puzzles are different
 
-            // Initialize the RNG for this generation
             rng = mulberry32(cyrb128(seed));
 
-            const loaderMessage = gridSize >= 50 ? "Generating large maze..." : "Generating Maze...";
+            const loaderMessage = gridSize >= 75 ? "Generating large maze..." : "Generating Maze...";
             if (!isForBook) {
                 setUiLoading(true, loaderMessage);
                 hideCompletionModal();
             }
             
-            userPath = [];
-            solutionPath = [];
-            startTime = null;
+            userPath = []; solutionPath = []; startTime = null;
             revealBtn.disabled = false;
             
             await new Promise(resolve => setTimeout(resolve, 30));
@@ -345,16 +329,11 @@
             try {
                 let mazeGrid;
                 switch(mazeType) {
-                    case 'prim':
-                        mazeGrid = generateMazePrim(gridSize, gridSize);
-                        break;
-                    case 'binary':
-                        mazeGrid = generateMazeBinaryTree(gridSize, gridSize);
-                        break;
-                    case 'backtracker':
-                    default:
-                         mazeGrid = generateMazeRecursiveBacktracker(gridSize, gridSize);
-                        break;
+                    case 'prim': mazeGrid = generateMazePrim(gridSize, gridSize); break;
+                    case 'binary': mazeGrid = generateMazeBinaryTree(gridSize, gridSize); break;
+                    case 'kruskal': mazeGrid = generateMazeKruskal(gridSize, gridSize); break;
+                    case 'wilsons': mazeGrid = generateMazeWilsons(gridSize, gridSize); break;
+                    default: mazeGrid = generateMazeRecursiveBacktracker(gridSize, gridSize); break;
                 }
                 
                 startCoords = { x: 0, y: 0 };
@@ -367,8 +346,7 @@
                     currentGridState = mazeGrid;
                     solutionPath = path;
                     puzzleConfigKey = `${gridSize}-${mazeType}-${seed}`;
-                    const typeName = mazeTypeSelect.options[mazeTypeSelect.selectedIndex].text;
-                    statusElement.textContent = `Type: ${typeName}`;
+                    statusElement.textContent = `Type: ${mazeTypeSelect.options[mazeTypeSelect.selectedIndex].text}`;
                     updateGridDisplay();
                     gridWrapper.style.visibility = 'visible';
                     instructionsContainer.style.visibility = 'visible';
@@ -376,463 +354,71 @@
                 }
 
                 return { grid: mazeGrid, solution: path, title: `Maze ${gridSize}x${gridSize}` };
-
             } catch (error) {
-                statusElement.textContent = `Error: ${error.message}`;
-                console.error(error);
-                return null;
+                statusElement.textContent = `Error: ${error.message}`; console.error(error); return null;
             } finally {
-                if (!isForBook) {
-                    setUiLoading(false);
-                }
+                if (!isForBook) { setUiLoading(false); }
             }
         }
 
-        function createEmptyGrid(width, height) {
-            return Array(height).fill(null).map((_, y) => Array(width).fill(null).map((_, x) => ({ x, y, walls: [true, true, true, true], visited: false })));
-        }
+        function createEmptyGrid(w, h) { return Array(h).fill(null).map((_, y) => Array(w).fill(null).map((_, x) => ({ x, y, walls: [true, true, true, true]}))) }
+        function getNeighbors(cell,grid,allDirs=false){const{x,y}=cell;const n=[];const d=[{x:0,y:-1},{x:1,y:0},{x:0,y:1},{x:-1,y:0}];for(const dir of d){const nX=x+dir.x,nY=y+dir.y;if(nX>=0&&nX<grid[0].length&&nY>=0&&nY<grid.length){const neighbor=grid[nY][nX];if(allDirs||!neighbor.visited)n.push(neighbor)}}return n}
+        function removeWall(a,b){const dX=a.x-b.x,dY=a.y-b.y;if(dX===1){a.walls[3]=!1;b.walls[1]=!1}else if(dX===-1){a.walls[1]=!1;b.walls[3]=!1}if(dY===1){a.walls[0]=!1;b.walls[2]=!1}else if(dY===-1){a.walls[2]=!1;b.walls[0]=!1}}
 
-        // ALGORITHM 1: Recursive Backtracker (DFS)
-        function generateMazeRecursiveBacktracker(width, height) {
-            const grid = createEmptyGrid(width, height);
-            const stack = [grid[0][0]];
-            grid[0][0].visited = true;
+        function generateMazeRecursiveBacktracker(w, h) { const g=createEmptyGrid(w,h);const s=[g[0][0]];g[0][0].visited=!0;while(s.length>0){const c=s.pop();const n=getNeighbors(c,g);if(n.length>0){s.push(c);const N=n[Math.floor(rng()*n.length)];removeWall(c,N);N.visited=!0;s.push(N)}}return g }
+        function generateMazePrim(w,h){const g=createEmptyGrid(w,h);const f=[];const sX=Math.floor(rng()*w),sY=Math.floor(rng()*h);g[sY][sX].visited=!0;getNeighbors(g[sY][sX],g,!0).forEach(n=>f.push(n));while(f.length>0){const fI=Math.floor(rng()*f.length);const c=f[fI];f.splice(fI,1);const iN=getNeighbors(c,g,!0).filter(n=>n.visited);if(iN.length>0){const N=iN[Math.floor(rng()*iN.length)];removeWall(c,N);c.visited=!0;getNeighbors(c,g,!0).filter(n=>!n.visited).forEach(n=>{if(!f.includes(n))f.push(n)})}}return g}
+        function generateMazeBinaryTree(w,h){const g=createEmptyGrid(w,h);for(let y=0;y<h;y++){for(let x=0;x<w;x++){const c=g[y][x];const n=[];if(y>0)n.push(g[y-1][x]);if(x>0)n.push(g[y][x-1]);if(n.length>0){const N=n[Math.floor(rng()*n.length)];removeWall(c,N)}}}return g}
+        function generateMazeKruskal(w,h){const g=createEmptyGrid(w,h);const e=[];const p=[];for(let y=0;y<h;y++){for(let x=0;x<w;x++){p[y*w+x]=y*w+x;if(y>0)e.push([x,y,'N']);if(x>0)e.push([x,y,'W'])}}for(let i=e.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[e[i],e[j]]=[e[j],e[i]]}const find=i=>p[i]===i?i:p[i]=find(p[i]);const union=(i,j)=>{const rI=find(i),rJ=find(j);if(rI!==rJ)p[rI]=rJ};for(const[x,y,d]of e){const c1=g[y][x];let c2;if(d==='N'){c2=g[y-1][x]}else{c2=g[y][x-1]}const n1=y*w+x,n2=(c2.y)*w+c2.x;if(find(n1)!==find(n2)){removeWall(c1,c2);union(n1,n2)}}return g}
+        function generateMazeWilsons(w,h){const g=createEmptyGrid(w,h);const u=[];for(let y=0;y<h;y++){for(let x=0;x<w;x++){u.push(g[y][x])}}const fV=u.splice(Math.floor(rng()*u.length),1)[0];fV.visited=!0;while(u.length>0){let c=u[Math.floor(rng()*u.length)];let p=[c];while(!c.visited){const n=getNeighbors(c,g,!0);c=n[Math.floor(rng()*n.length)];const pI=p.indexOf(c);if(pI!==-1){p.splice(pI+1)}else{p.push(c)}}for(let i=0;i<p.length-1;i++){removeWall(p[i],p[i+1]);p[i].visited=!0;const uI=u.indexOf(p[i]);if(uI!==-1)u.splice(uI,1)}}}return g}
 
-            while (stack.length > 0) {
-                const current = stack.pop();
-                const neighbors = getNeighbors(current, grid, false);
-                if (neighbors.length > 0) {
-                    stack.push(current);
-                    const neighbor = neighbors[Math.floor(rng() * neighbors.length)];
-                    removeWall(current, neighbor);
-                    neighbor.visited = true;
-                    stack.push(neighbor);
-                }
-            }
-            return grid;
-        }
-
-        // ALGORITHM 2: Prim's Algorithm
-        function generateMazePrim(width, height) {
-            const grid = createEmptyGrid(width, height);
-            const frontier = [];
-            
-            const startX = Math.floor(rng() * width);
-            const startY = Math.floor(rng() * height);
-            grid[startY][startX].visited = true;
-            
-            getNeighbors(grid[startY][startX], grid, true).forEach(n => frontier.push(n));
-
-            while(frontier.length > 0) {
-                const frontierIndex = Math.floor(rng() * frontier.length);
-                const current = frontier[frontierIndex];
-                frontier.splice(frontierIndex, 1);
-
-                const inNeighbors = getNeighbors(current, grid, true).filter(n => n.visited);
-                if(inNeighbors.length > 0) {
-                    const neighbor = inNeighbors[Math.floor(rng() * inNeighbors.length)];
-                    removeWall(current, neighbor);
-                    current.visited = true;
-                    getNeighbors(current, grid, true).filter(n => !n.visited).forEach(n => {
-                        if(!frontier.includes(n)) frontier.push(n);
-                    });
-                }
-            }
-            return grid;
-        }
-
-        // ALGORITHM 3: Binary Tree
-        function generateMazeBinaryTree(width, height) {
-            const grid = createEmptyGrid(width, height);
-            for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
-                    const cell = grid[y][x];
-                    const neighbors = [];
-                    if (y > 0) neighbors.push(grid[y - 1][x]); // North
-                    if (x > 0) neighbors.push(grid[y][x - 1]); // West
-                    
-                    if(neighbors.length > 0) {
-                        const neighbor = neighbors[Math.floor(rng() * neighbors.length)];
-                        removeWall(cell, neighbor);
-                    }
-                }
-            }
-            return grid;
-        }
-
-        function getNeighbors(cell, grid, all) {
-            const { x, y } = cell;
-            const neighbors = [];
-            const directions = [{x:0, y:-1}, {x:1, y:0}, {x:0, y:1}, {x:-1, y:0}]; // N, E, S, W
-            for (const dir of directions) {
-                const nX = x + dir.x, nY = y + dir.y;
-                if (nX >= 0 && nX < grid[0].length && nY >= 0 && nY < grid.length) {
-                   const neighbor = grid[nY][nX];
-                   if(all || !neighbor.visited) neighbors.push(neighbor);
-                }
-            }
-            return neighbors;
-        }
-
-        function removeWall(a, b) {
-            const dX = a.x - b.x, dY = a.y - b.y;
-            if (dX === 1) { a.walls[3] = false; b.walls[1] = false; } 
-            else if (dX === -1) { a.walls[1] = false; b.walls[3] = false; }
-            if (dY === 1) { a.walls[0] = false; b.walls[2] = false; } 
-            else if (dY === -1) { a.walls[2] = false; b.walls[0] = false; }
-        }
-
-        function findSolutionPath(grid, start, end) {
-            const queue = [[start]];
-            const visited = new Set([`${start.x},${start.y}`]);
-            while (queue.length > 0) {
-                const path = queue.shift();
-                const { x, y } = path[path.length - 1];
-                if (x === end.x && y === end.y) return path;
-                const cell = grid[y][x];
-                const directions = [{x:0, y:-1}, {x:1, y:0}, {x:0, y:1}, {x:-1, y:0}];
-                for (let i = 0; i < directions.length; i++) {
-                    if (!cell.walls[i]) {
-                        const nX = x + directions[i].x, nY = y + directions[i].y;
-                        const key = `${nX},${nY}`;
-                        if (!visited.has(key)) {
-                            visited.add(key);
-                            queue.push([...path, {x: nX, y: nY}]);
-                        }
-                    }
-                }
-            }
-            return [];
-        }
+        function findSolutionPath(grid,start,end){const q=[[start]];const v=new Set([`${start.x},${start.y}`]);while(q.length>0){const p=q.shift();const{x,y}=p[p.length-1];if(x===end.x&&y===end.y)return p;const c=grid[y][x];const d=[{x:0,y:-1},{x:1,y:0},{x:0,y:1},{x:-1,y:0}];for(let i=0;i<d.length;i++){if(!c.walls[i]){const nX=x+d[i].x,nY=y+d[i].y;const k=`${nX},${nY}`;if(!v.has(k)){v.add(k);q.push([...p,{x:nX,y:nY}])}}}}return[]}
 
         // --- UI & RENDERING ---
 
-        function setUiLoading(isLoading, message = '') { 
-            document.querySelectorAll('button').forEach(btn => btn.disabled = isLoading); 
-            loader.classList.toggle('hidden', !isLoading); 
-            loaderText.textContent = message;
-            cancelBtn.style.display = 'none'; // Hide by default
-        }
-
-        function updateGridDisplay() {
-            gridElement.innerHTML = '';
-            const puzzleContainerWidth = Math.min(document.getElementById('puzzle-container').clientWidth, 800);
-            let cellSize = Math.floor(puzzleContainerWidth / gridSize);
-            cellSize = Math.max(2, cellSize);
-            gridElement.style.gridTemplateColumns = `repeat(${gridSize}, ${cellSize}px)`;
-            gridElement.style.gridTemplateRows = `repeat(${gridSize}, ${cellSize}px)`;
-            
-            const wallWidth = Math.max(1, Math.floor(cellSize / 12));
-            dynamicGridStyles.innerHTML = `
-                #grid div.wall-top { border-top-width: ${wallWidth}px; border-top-style: solid; }
-                #grid div.wall-right { border-right-width: ${wallWidth}px; border-right-style: solid; }
-                #grid div.wall-bottom { border-bottom-width: ${wallWidth}px; border-bottom-style: solid; }
-                #grid div.wall-left { border-left-width: ${wallWidth}px; border-left-style: solid; }
-                #grid div.keyboard-cursor { box-shadow: inset 0 0 0 ${Math.max(2, wallWidth + 1)}px var(--color-cursor-shadow); }
-            `;
-
-            for (let y = 0; y < gridSize; y++) { 
-                for (let x = 0; x < gridSize; x++) { 
-                    const cell = document.createElement('div'); 
-                    cell.dataset.x = x; cell.dataset.y = y;
-                    const cellData = currentGridState[y][x];
-                    if(cellData.walls[0]) cell.classList.add('wall-top');
-                    if(cellData.walls[1]) cell.classList.add('wall-right');
-                    if(cellData.walls[2]) cell.classList.add('wall-bottom');
-                    if(cellData.walls[3]) cell.classList.add('wall-left');
-                    if (x === startCoords.x && y === startCoords.y) cell.classList.add('start-cell');
-                    if (x === endCoords.x && y === endCoords.y) cell.classList.add('end-cell');
-                    gridElement.appendChild(cell); 
-                } 
-            }
-            redrawUserPath();
-        }
-
-        function redrawUserPath() {
-            document.querySelectorAll('#grid div.user-path, #grid div.keyboard-cursor').forEach(c => {
-                c.classList.remove('user-path', 'keyboard-cursor');
-            });
-            userPath.forEach(pos => {
-                const cell = gridElement.querySelector(`[data-x='${pos.x}'][data-y='${pos.y}']`);
-                if (cell) cell.classList.add('user-path');
-            });
-            if (userPath.length > 0) {
-                const lastPos = userPath[userPath.length - 1];
-                const cursorCell = gridElement.querySelector(`[data-x='${lastPos.x}'][data-y='${lastPos.y}']`);
-                if(cursorCell) cursorCell.classList.add('keyboard-cursor');
-            }
-        }
-        
-        function revealSolution() { 
-            if (solutionPath.length === 0) return;
-            solutionPath.forEach(pos => {
-                 const cell = gridElement.querySelector(`[data-x='${pos.x}'][data-y='${pos.y}']`);
-                 if(cell) cell.classList.add('solution-path');
-            });
-            revealBtn.disabled = true;
-        }
+        function setUiLoading(isLoading,message=''){document.querySelectorAll('button').forEach(b=>b.disabled=isLoading);loader.classList.toggle('hidden',!isLoading);loaderText.textContent=message;cancelBtn.style.display='none'}
+        function updateGridDisplay(){gridElement.innerHTML='';const pW=Math.min(document.getElementById('puzzle-container').clientWidth,800);let cS=Math.floor(pW/gridSize);cS=Math.max(2,cS);gridElement.style.gridTemplateColumns=`repeat(${gridSize},${cS}px)`;gridElement.style.gridTemplateRows=`repeat(${gridSize},${cS}px)`;const wW=Math.max(1,Math.floor(cS/12));dynamicGridStyles.innerHTML=`#grid div.wall-top{border-top-width:${wW}px;border-top-style:solid}#grid div.wall-right{border-right-width:${wW}px;border-right-style:solid}#grid div.wall-bottom{border-bottom-width:${wW}px;border-bottom-style:solid}#grid div.wall-left{border-left-width:${wW}px;border-left-style:solid}#grid div.keyboard-cursor{box-shadow:inset 0 0 0 ${Math.max(2,wW+1)}px var(--color-cursor-shadow)}`;for(let y=0;y<gridSize;y++){for(let x=0;x<gridSize;x++){const c=document.createElement('div');c.dataset.x=x;c.dataset.y=y;const cD=currentGridState[y][x];if(cD.walls[0])c.classList.add('wall-top');if(cD.walls[1])c.classList.add('wall-right');if(cD.walls[2])c.classList.add('wall-bottom');if(cD.walls[3])c.classList.add('wall-left');if(x===startCoords.x&&y===startCoords.y)c.classList.add('start-cell');if(x===endCoords.x&&y===endCoords.y)c.classList.add('end-cell');gridElement.appendChild(c)}}redrawUserPath()}
+        function redrawUserPath(){document.querySelectorAll('#grid div.user-path,#grid div.keyboard-cursor').forEach(c=>{c.classList.remove('user-path','keyboard-cursor')});userPath.forEach(p=>{const c=gridElement.querySelector(`[data-x='${p.x}'][data-y='${p.y}']`);if(c)c.classList.add('user-path')});if(userPath.length>0){const lP=userPath[userPath.length-1];const cC=gridElement.querySelector(`[data-x='${lP.x}'][data-y='${lP.y}']`);if(cC)cC.classList.add('keyboard-cursor')}}
+        function revealSolution(){if(solutionPath.length===0)return;solutionPath.forEach(p=>{const c=gridElement.querySelector(`[data-x='${p.x}'][data-y='${p.y}']`);if(c)c.classList.add('solution-path')});revealBtn.disabled=!0}
         
         // --- PDF & BOOK GENERATION ---
 
-        function showBookOptions() { mainControls.style.display = 'none'; generateBookControls.style.display = 'block'; globalOptionsContainer.style.display = 'none';}
-        function resetBookUI() { mainControls.style.display = 'grid'; generateBookControls.style.display = 'grid'; globalOptionsContainer.style.display = 'grid';}
-
-        function downloadPdf() {
-            if (currentGridState.length === 0) { alert("Please generate a maze first."); return; }
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-            drawMazeOnPdfPage(doc, { grid: currentGridState, solution: solutionPath, title: 'Maze' }, false, null, false);
-            doc.save(`Maze-${gridSize}x${gridSize}-${mazeTypeSelect.value}.pdf`);
-        }
-
-        async function downloadBook() {
-            const puzzleCount = parseInt(document.getElementById('puzzle-count-input').value, 10);
-            if (isNaN(puzzleCount) || puzzleCount < 1 || puzzleCount > 100) { alert("Please enter a number between 1 and 100."); return; }
-            const includeAnswerKey = document.getElementById('answer-key-checkbox').checked;
-            const includePageNumbers = document.getElementById('page-numbers-checkbox').checked;
-            const bookTitle = document.getElementById('book-title-input').value.trim();
-            const bookSubtitle = document.getElementById('book-subtitle-input').value.trim();
-            
-            gridElement.innerHTML = ''; instructionsContainer.style.visibility = 'hidden';
-            isGeneratingBook = true;
-            setUiLoading(true, "Preparing Book...");
-            loader.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            cancelBtn.style.display = 'block'; cancelBtn.disabled = false;
-            
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-            doc.deletePage(1);
-            const allPuzzlesData = [];
-            
-            try {
-                if (bookTitle) {
-                    doc.addPage();
-                    const pageW = doc.internal.pageSize.getWidth(), pageH = doc.internal.pageSize.getHeight();
-                    doc.setFont('helvetica', 'bold').setFontSize(30).text(bookTitle, pageW/2, pageH/2 - 10, {align: 'center'});
-                    if (bookSubtitle) doc.setFont('helvetica', 'normal').setFontSize(16).text(bookSubtitle, pageW/2, pageH/2 + 5, {align: 'center'});
-                }
-
-                for (let i = 1; i <= puzzleCount; i++) {
-                    if (!isGeneratingBook) { throw new Error("Cancelled"); }
-                    
-                    loaderText.textContent = `Generating Maze ${i} of ${puzzleCount}...`;
-                    const puzzleData = await generatePuzzle(true);
-                    puzzleData.title = `Maze ${i}`;
-                    allPuzzlesData.push(puzzleData);
-                    
-                    doc.addPage();
-                    drawMazeOnPdfPage(doc, puzzleData, false, i, includePageNumbers);
-                }
-
-                if (includeAnswerKey && allPuzzlesData.length > 0) {
-                    loaderText.textContent = "Generating Maze Solutions...";
-                    await new Promise(resolve => setTimeout(resolve, 50));
-                    drawMazeSolutions(doc, allPuzzlesData);
-                }
-
-                const safeTitle = (bookTitle.replace(/[^a-zA-Z0-9]/g, '-') || `Maze-Book-${puzzleCount}-Mazes`).substring(0, 50);
-                doc.save(`${safeTitle}.pdf`);
-                statusElement.textContent = "Book successfully generated!";
-            } catch (error) {
-                if (error.message === "Cancelled") statusElement.textContent = "Book generation cancelled.";
-                else statusElement.textContent = `Error: ${error.message}`;
-            } finally {
-                isGeneratingBook = false;
-                setUiLoading(false);
-                resetBookUI();
-                triggerGeneratePuzzle();
-            }
-        }
-
-        function cancelBookGeneration() { isGeneratingBook = false; }
-        
-        function drawMazeOnPdfPage(doc, puzzleData, showSolution, pageNum, includePageNumbers) {
-            const { grid, solution, title } = puzzleData;
-            const pageW = doc.internal.pageSize.getWidth(), pageH = doc.internal.pageSize.getHeight(), margin = 15;
-            let currentY = margin;
-            doc.setFont('helvetica', 'bold').setFontSize(16).text(title, pageW/2, currentY, {align:'center'});
-            currentY += 15;
-
-            const mazeSize = 180, currentGridSize = grid.length, cellSize = mazeSize / currentGridSize;
-            const startX = (pageW - mazeSize) / 2, startY = currentY;
-
-            if (showSolution) {
-                doc.setFillColor(200, 255, 200);
-                solution.forEach(pos => doc.rect(startX + pos.x * cellSize, startY + pos.y * cellSize, cellSize, cellSize, 'F'));
-            }
-
-            doc.setFillColor(40, 167, 69).rect(startX, startY, cellSize, cellSize, 'F');
-            doc.setFillColor(220, 53, 69).rect(startX + (currentGridSize-1) * cellSize, startY + (currentGridSize-1) * cellSize, cellSize, cellSize, 'F');
-            
-            doc.setDrawColor(0).setLineWidth(0.5);
-            for (let y = 0; y < currentGridSize; y++) {
-                for (let x = 0; x < currentGridSize; x++) {
-                    const cell = grid[y][x], cellX = startX + x * cellSize, cellY = startY + y * cellSize;
-                    if (cell.walls[0]) doc.line(cellX, cellY, cellX + cellSize, cellY);
-                    if (cell.walls[1]) doc.line(cellX + cellSize, cellY, cellX + cellSize, cellY + cellSize);
-                    if (cell.walls[2]) doc.line(cellX, cellY + cellSize, cellX + cellSize, cellY + cellSize);
-                    if (cell.walls[3]) doc.line(cellX, cellY, cellX, cellY + cellSize);
-                }
-            }
-            if (includePageNumbers && pageNum) {
-                doc.setFont('helvetica', 'normal').setFontSize(8).text(String(pageNum), pageW / 2, pageH - (margin / 2), { align: 'center' });
-            }
-        }
-
-        function drawMazeSolutions(doc, allPuzzlesData) {
-            doc.addPage();
-            const pageW = doc.internal.pageSize.getWidth(), pageH = doc.internal.pageSize.getHeight(), margin = 15;
-            doc.setFont('helvetica', 'bold').setFontSize(20).text("Maze Solutions", pageW/2, margin, {align:'center'});
-            
-            const puzzlesPerPage = 6, cols = 2, rows = 3;
-            const boxW = (pageW - margin*2) / cols, boxH = (pageH - margin*2 - 10) / rows;
-            
-            allPuzzlesData.forEach((puzzleData, index) => {
-                if (index > 0 && index % puzzlesPerPage === 0) {
-                    doc.addPage();
-                    doc.setFont('helvetica', 'bold').setFontSize(20).text("Maze Solutions", pageW/2, margin, {align:'center'});
-                }
-                const i = index % puzzlesPerPage;
-                const col = i % cols, row = Math.floor(i / cols);
-                const startBoxX = margin + col * boxW, startBoxY = margin + 10 + row * boxH;
-                
-                doc.setFont('helvetica', 'bold').setFontSize(10).text(puzzleData.title, startBoxX + boxW/2, startBoxY + 8, {align:'center'});
-                
-                const mazeSize = Math.min(boxW - 10, boxH - 20), currentGridSize = puzzleData.grid.length, cellSize = mazeSize / currentGridSize;
-                const startX = startBoxX + (boxW - mazeSize) / 2, startY = startBoxY + 12;
-
-                doc.setFillColor(200, 255, 200);
-                puzzleData.solution.forEach(pos => doc.rect(startX + pos.x * cellSize, startY + pos.y * cellSize, cellSize, cellSize, 'F'));
-                doc.setDrawColor(0).setLineWidth(0.2);
-                for (let y = 0; y < currentGridSize; y++) {
-                    for (let x = 0; x < currentGridSize; x++) {
-                        const cell = puzzleData.grid[y][x], cellX = startX + x * cellSize, cellY = startY + y * cellSize;
-                        if (cell.walls[0]) doc.line(cellX, cellY, cellX + cellSize, cellY);
-                        if (cell.walls[1]) doc.line(cellX + cellSize, cellY, cellX + cellSize, cellY + cellSize);
-                        if (cell.walls[2]) doc.line(cellX, cellY + cellSize, cellX + cellSize, cellY + cellSize);
-                        if (cell.walls[3]) doc.line(cellX, cellY, cellX, cellY + cellSize);
-                    }
-                }
-            });
-        }
+        function showBookOptions(){mainControls.style.display='none';generateBookControls.style.display='block';globalOptionsContainer.style.display='none'}
+        function resetBookUI(){mainControls.style.display='grid';generateBookControls.style.display='grid';globalOptionsContainer.style.display='grid'}
+        function downloadPdf(){if(currentGridState.length===0){alert("Please generate a maze first.");return}const{jsPDF}=window.jspdf;const d=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});drawMazeOnPdfPage(d,{grid:currentGridState,solution:solutionPath,title:'Maze'},!1,null,!1);d.save(`Maze-${gridSize}x${gridSize}-${mazeTypeSelect.value}.pdf`)}
+        async function downloadBook(){const pC=parseInt(document.getElementById('puzzle-count-input').value,10);if(isNaN(pC)||pC<1||pC>100){alert("Please enter a number between 1 and 100.");return}const iAK=document.getElementById('answer-key-checkbox').checked;const iPN=document.getElementById('page-numbers-checkbox').checked;const bT=document.getElementById('book-title-input').value.trim();const bS=document.getElementById('book-subtitle-input').value.trim();gridElement.innerHTML='';instructionsContainer.style.visibility='hidden';isGeneratingBook=!0;setUiLoading(!0,"Preparing Book...");loader.scrollIntoView({behavior:'smooth',block:'center'});cancelBtn.style.display='block';cancelBtn.disabled=!1;const{jsPDF}=window.jspdf;const d=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});d.deletePage(1);const aPD=[];try{if(bT){d.addPage();const pW=d.internal.pageSize.getWidth(),pH=d.internal.pageSize.getHeight();d.setFont('helvetica','bold').setFontSize(30).text(bT,pW/2,pH/2-10,{align:'center'});if(bS)d.setFont('helvetica','normal').setFontSize(16).text(bS,pW/2,pH/2+5,{align:'center'})}for(let i=1;i<=pC;i++){if(!isGeneratingBook){throw new Error("Cancelled")}loaderText.textContent=`Generating Maze ${i} of ${pC}...`;const pD=await generatePuzzle(!0);pD.title=`Maze ${i}`;aPD.push(pD);d.addPage();drawMazeOnPdfPage(d,pD,!1,i,iPN)}if(iAK&&aPD.length>0){loaderText.textContent="Generating Maze Solutions...";await new Promise(r=>setTimeout(r,50));drawMazeSolutions(d,aPD)}const sT=(bT.replace(/[^a-zA-Z0-9]/g,'-')||`Maze-Book-${pC}-Mazes`).substring(0,50);d.save(`${sT}.pdf`);statusElement.textContent="Book successfully generated!"}catch(e){if(e.message==="Cancelled")statusElement.textContent="Book generation cancelled.";else statusElement.textContent=`Error: ${e.message}`}finally{isGeneratingBook=!1;setUiLoading(!1);resetBookUI();triggerGeneratePuzzle()}}
+        function cancelBookGeneration(){isGeneratingBook=!1}
+        function drawMazeOnPdfPage(d,pD,sS,pN,iPN){const{grid:g,solution:s,title:t}=pD;const pW=d.internal.pageSize.getWidth(),pH=d.internal.pageSize.getHeight(),m=15;let cY=m;d.setFont('helvetica','bold').setFontSize(16).text(t,pW/2,cY,{align:'center'});cY+=15;const mS=180,cG=g.length,cS=mS/cG;const sX=(pW-mS)/2,sY=cY;if(sS){d.setFillColor(200,255,200);s.forEach(p=>d.rect(sX+p.x*cS,sY+p.y*cS,cS,cS,'F'))}d.setFillColor(40,167,69).rect(sX,sY,cS,cS,'F');d.setFillColor(220,53,69).rect(sX+(cG-1)*cS,sY+(cG-1)*cS,cS,cS,'F');d.setDrawColor(0).setLineWidth(.5);for(let y=0;y<cG;y++){for(let x=0;x<cG;x++){const c=g[y][x],cX=sX+x*cS,cY=sY+y*cS;if(c.walls[0])d.line(cX,cY,cX+cS,cY);if(c.walls[1])d.line(cX+cS,cY,cX+cS,cY+cS);if(c.walls[2])d.line(cX,cY+cS,cX+cS,cY+cS);if(c.walls[3])d.line(cX,cY,cX,cY+cS)}}if(iPN&&pN){d.setFont('helvetica','normal').setFontSize(8).text(String(pN),pW/2,pH-m/2,{align:'center'})}}
+        function drawMazeSolutions(d,aPD){d.addPage();const pW=d.internal.pageSize.getWidth(),pH=d.internal.pageSize.getHeight(),m=15;d.setFont('helvetica','bold').setFontSize(20).text("Maze Solutions",pW/2,m,{align:'center'});const pPP=6,c=2,r=3;const bW=(pW-m*2)/c,bH=(pH-m*2-10)/r;aPD.forEach((pD,idx)=>{if(idx>0&&idx%pPP===0){d.addPage();d.setFont('helvetica','bold').setFontSize(20).text("Maze Solutions",pW/2,m,{align:'center'})}const i=idx%pPP;const col=i%c,row=Math.floor(i/c);const sBX=m+col*bW,sBY=m+10+row*bH;d.setFont('helvetica','bold').setFontSize(10).text(pD.title,sBX+bW/2,sBY+8,{align:'center'});const mS=Math.min(bW-10,bH-20),cG=pD.grid.length,cS=mS/cG;const sX=sBX+(bW-mS)/2,sY=sBY+12;d.setFillColor(200,255,200);pD.solution.forEach(p=>d.rect(sX+p.x*cS,sY+p.y*cS,cS,cS,'F'));d.setDrawColor(0).setLineWidth(.2);for(let y=0;y<cG;y++){for(let x=0;x<cG;x++){const c=pD.grid[y][x],cX=sX+x*cS,cY=sY+y*cS;if(c.walls[0])d.line(cX,cY,cX+cS,cY);if(c.walls[1])d.line(cX+cS,cY,cX+cS,cY+cS);if(c.walls[2])d.line(cX,cY+cS,cX+cS,cY+cS);if(c.walls[3])d.line(cX,cY,cX,cY+cS)}}})}
         
         // --- INTERACTIVE MAZE LOGIC ---
 
-        function handleInteractionStart(targetCell) {
-            if (!targetCell || isDrawing) return;
-            const x = parseInt(targetCell.dataset.x, 10), y = parseInt(targetCell.dataset.y, 10);
-            if (x === startCoords.x && y === startCoords.y) {
-                isDrawing = true; 
-                userPath = [{x, y}]; 
-                redrawUserPath();
-            }
-        }
-        
-        function handleInteractionMove(targetCell) {
-            if (!isDrawing || !targetCell) return;
-            
-            const x = parseInt(targetCell.dataset.x, 10);
-            const y = parseInt(targetCell.dataset.y, 10);
-            const lastPos = userPath[userPath.length - 1];
-            if (x === lastPos.x && y === lastPos.y) return;
-
-            if (userPath.length > 1 && userPath[userPath.length - 2].x === x && userPath[userPath.length - 2].y === y) {
-                userPath.pop();
-            } else {
-                const currentCellData = currentGridState[lastPos.y][lastPos.x];
-                const dX = x - lastPos.x, dY = y - lastPos.y;
-                if (Math.abs(dX) + Math.abs(dY) === 1) {
-                    let wallIndex = dY === -1 ? 0 : dX === 1 ? 1 : dY === 1 ? 2 : 3;
-                    if (!currentCellData.walls[wallIndex]) userPath.push({x, y});
-                }
-            }
-            redrawUserPath();
-            if (x === endCoords.x && y === endCoords.y) handleInteractionEnd();
-        }
-
-        function handleInteractionEnd() {
-            if (!isDrawing) return;
-            isDrawing = false;
-            const lastPos = userPath[userPath.length - 1];
-            if (lastPos && lastPos.x === endCoords.x && lastPos.y === endCoords.y) {
-                handlePuzzleCompletion(Date.now() - startTime);
-            }
-        }
-
-        function handleKeyDown(e) {
-            if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
-            if (userPath.length === 0 || isDrawing) return;
-
-            e.preventDefault();
-            const lastPos = userPath[userPath.length - 1];
-            let targetPos;
-            let wallIndex = -1;
-
-            switch(e.key) {
-                case 'ArrowUp': targetPos = {x: lastPos.x, y: lastPos.y - 1}; wallIndex = 0; break;
-                case 'ArrowDown': targetPos = {x: lastPos.x, y: lastPos.y + 1}; wallIndex = 2; break;
-                case 'ArrowLeft': targetPos = {x: lastPos.x - 1, y: lastPos.y}; wallIndex = 3; break;
-                case 'ArrowRight': targetPos = {x: lastPos.x + 1, y: lastPos.y}; wallIndex = 1; break;
-            }
-
-            if (userPath.length > 1 && targetPos.x === userPath[userPath.length - 2].x && targetPos.y === userPath[userPath.length - 2].y) {
-                userPath.pop();
-            } else {
-                if (targetPos.x >= 0 && targetPos.x < gridSize && targetPos.y >= 0 && targetPos.y < gridSize) {
-                    const currentCellData = currentGridState[lastPos.y][lastPos.x];
-                    if (!currentCellData.walls[wallIndex]) {
-                        userPath.push(targetPos);
-                    }
-                }
-            }
-            
-            redrawUserPath();
-
-            const newLastPos = userPath[userPath.length - 1];
-            if (newLastPos.x === endCoords.x && newLastPos.y === endCoords.y) {
-                handlePuzzleCompletion(Date.now() - startTime);
-            }
-        }
+        function handleInteractionStart(tC){if(!tC||isDrawing)return;const x=parseInt(tC.dataset.x,10),y=parseInt(tC.dataset.y,10);if(x===startCoords.x&&y===startCoords.y){isDrawing=!0;userPath=[{x,y}];redrawUserPath()}}
+        function handleInteractionMove(tC){if(!isDrawing||!tC)return;const x=parseInt(tC.dataset.x,10),y=parseInt(tC.dataset.y,10);const lP=userPath[userPath.length-1];if(x===lP.x&&y===lP.y)return;if(userPath.length>1&&userPath[userPath.length-2].x===x&&userPath[userPath.length-2].y===y){userPath.pop()}else{const cD=currentGridState[lP.y][lP.x];const dX=x-lP.x,dY=y-lP.y;if(Math.abs(dX)+Math.abs(dY)===1){let wI=dY===-1?0:dX===1?1:dY===1?2:3;if(!cD.walls[wI])userPath.push({x,y})}}redrawUserPath();if(x===endCoords.x&&y===endCoords.y)handleInteractionEnd()}
+        function handleInteractionEnd(){if(!isDrawing)return;isDrawing=!1;const lP=userPath[userPath.length-1];if(lP&&lP.x===endCoords.x&&lP.y===endCoords.y){handlePuzzleCompletion(Date.now()-startTime)}}
+        function handleKeyDown(e){if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)||userPath.length===0||isDrawing)return;e.preventDefault();const lP=userPath[userPath.length-1];let tP,wI=-1;switch(e.key){case'ArrowUp':tP={x:lP.x,y:lP.y-1};wI=0;break;case'ArrowDown':tP={x:lP.x,y:lP.y+1};wI=2;break;case'ArrowLeft':tP={x:lP.x-1,y:lP.y};wI=3;break;case'ArrowRight':tP={x:lP.x+1,y:lP.y};wI=1;break}if(userPath.length>1&&tP.x===userPath[userPath.length-2].x&&tP.y===userPath[userPath.length-2].y){userPath.pop()}else{if(tP.x>=0&&tP.x<gridSize&&tP.y>=0&&tP.y<gridSize){const cD=currentGridState[lP.y][lP.x];if(!cD.walls[wI]){userPath.push(tP)}}}redrawUserPath();const nLP=userPath[userPath.length-1];if(nLP.x===endCoords.x&&nLP.y===endCoords.y){handlePuzzleCompletion(Date.now()-startTime)}}
 
         // --- COMPLETION & TIMERS ---
 
-        function formatTime(ms) { const s = Math.floor(ms / 1000); return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`; }
-
-        function handlePuzzleCompletion(elapsedTime) {
-            const bestTime = localStorage.getItem(puzzleConfigKey);
-            let isNewBest = false;
-            if (bestTime === null || elapsedTime < parseInt(bestTime, 10)) {
-                localStorage.setItem(puzzleConfigKey, elapsedTime);
-                isNewBest = true;
-            }
-            document.getElementById('your-time').textContent = `Your time: ${formatTime(elapsedTime)}`;
-            document.getElementById('best-time').textContent = `Best time: ${formatTime(localStorage.getItem(puzzleConfigKey))}`;
-            document.getElementById('new-best-time').textContent = isNewBest ? 'New Best Time!' : '';
-            showCompletionModal();
-        }
-
-        function showCompletionModal() { completionModal.classList.add('visible'); revealBtn.disabled = true; }
-        function hideCompletionModal() { completionModal.classList.remove('visible'); }
+        function formatTime(ms){const s=Math.floor(ms/1000);return`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`}
+        function handlePuzzleCompletion(eT){const bT=localStorage.getItem(puzzleConfigKey);let iNB=!1;if(bT===null||eT<parseInt(bT,10)){localStorage.setItem(puzzleConfigKey,eT);iNB=!0}document.getElementById('your-time').textContent=`Your time: ${formatTime(eT)}`;document.getElementById('best-time').textContent=`Best time: ${formatTime(localStorage.getItem(puzzleConfigKey))}`;document.getElementById('new-best-time').textContent=iNB?'New Best Time!':'';showCompletionModal()}
+        function showCompletionModal(){completionModal.classList.add('visible');revealBtn.disabled=!0}
+        function hideCompletionModal(){completionModal.classList.remove('visible')}
 
         // --- THEME TOGGLE ---
-        const themeToggleBtn = document.getElementById('theme-toggle-btn');
-        function setTheme(theme) { document.body.classList.toggle('dark-mode', theme === 'dark'); localStorage.setItem('theme', theme); }
-        themeToggleBtn.addEventListener('click', () => setTheme(document.body.classList.contains('dark-mode') ? 'light' : 'dark'));
-        const savedTheme = localStorage.getItem('theme'), prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        setTheme(savedTheme || (prefersDark ? 'dark' : 'light'));
-
+        const themeToggleBtn=document.getElementById('theme-toggle-btn');function setTheme(t){document.body.classList.toggle('dark-mode',t==='dark');localStorage.setItem('theme',t)}themeToggleBtn.addEventListener('click',()=>setTheme(document.body.classList.contains('dark-mode')?'light':'dark'));const savedTheme=localStorage.getItem('theme'),prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;setTheme(savedTheme||(prefersDark?'dark':'light'));
+        
         // --- EVENT LISTENERS ---
-        gridElement.addEventListener('mousedown', e => { if (e.button === 0) handleInteractionStart(e.target.closest('div[data-x]')); });
-        gridElement.addEventListener('mouseover', e => handleInteractionMove(e.target.closest('div[data-x]')));
-        document.addEventListener('mouseup', e => { if (e.button === 0) handleInteractionEnd(); });
-        gridElement.addEventListener('touchstart', e => { e.preventDefault(); const t = e.touches[0]; handleInteractionStart(document.elementFromPoint(t.clientX, t.clientY)?.closest('div[data-x]')); }, { passive: false });
-        gridElement.addEventListener('touchmove', e => { e.preventDefault(); const t = e.touches[0]; handleInteractionMove(document.elementFromPoint(t.clientX, t.clientY)?.closest('div[data-x]')); }, { passive: false });
-        gridElement.addEventListener('touchend', handleInteractionEnd);
-        gridElement.addEventListener('touchcancel', handleInteractionEnd);
-        document.addEventListener('keydown', handleKeyDown);
-
-        window.addEventListener('load', () => triggerGeneratePuzzle());
-        window.addEventListener('resize', () => { if (currentGridState.length > 0) { clearTimeout(debounceTimeout); debounceTimeout = setTimeout(updateGridDisplay, 100); } });
+        gridElement.addEventListener('mousedown',e=>{if(e.button===0)handleInteractionStart(e.target.closest('div[data-x]'))});
+        gridElement.addEventListener('mouseover',e=>handleInteractionMove(e.target.closest('div[data-x]')));
+        document.addEventListener('mouseup',e=>{if(e.button===0)handleInteractionEnd()});
+        gridElement.addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0];handleInteractionStart(document.elementFromPoint(t.clientX,t.clientY)?.closest('div[data-x]'))},{passive:!1});
+        gridElement.addEventListener('touchmove',e=>{e.preventDefault();const t=e.touches[0];handleInteractionMove(document.elementFromPoint(t.clientX,t.clientY)?.closest('div[data-x]'))},{passive:!1});
+        gridElement.addEventListener('touchend',handleInteractionEnd);
+        gridElement.addEventListener('touchcancel',handleInteractionEnd);
+        document.addEventListener('keydown',handleKeyDown);
+        randomSeedBtn.addEventListener('click', () => { seedInput.value = (Date.now().toString(36) + Math.random().toString(36).substring(2, 5)); triggerGeneratePuzzle(); });
+        window.addEventListener('load',()=>triggerGeneratePuzzle());
+        window.addEventListener('resize',()=>{if(currentGridState.length>0){clearTimeout(debounceTimeout);debounceTimeout=setTimeout(updateGridDisplay,100)}});
     </script>
 </body>
 </html>
