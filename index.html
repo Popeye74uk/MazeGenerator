@@ -6,7 +6,7 @@
     <title>Maze Generator v0.12</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
-        :root{--color-background:#f8f9fa;--color-container-bg:#f8f9fa;--color-text-primary:#333;--color-text-secondary:#6c757d;--color-heading:#343a40;--color-grid-lines:#adb5bd;--color-grid-cell-bg:#fff;--color-button-disabled-bg:#6c757d;--color-spinner-track:#f3f3f3;--color-modal-bg:rgba(0,0,0,0.6);--color-modal-content-bg:white;--color-box-shadow:rgba(0,0,0,0.1);--color-box-shadow-hover:rgba(0,0,0,0.15);--color-primary:#007bff;--color-success:#28a745;--color-danger:#dc3545;--color-warning:#fd7e14;--color-info:#6f42c1;--color-pink:#d63384;--color-revealed-bg:rgba(40,167,69,0.3);--color-user-path-bg:rgba(0,123,255,0.3);--color-start-bg:var(--color-success);--color-end-bg:var(--color-danger);--color-cursor-shadow:rgba(0,123,255,0.7);--color-anim-visited:rgba(111,66,193,0.3);--color-anim-path:rgba(253,126,20,0.4)}
+        :root{--color-background:#f8f9fa;--color-container-bg:#f8f9fa;--color-text-primary:#333;--color-text-secondary:#6c757d;--color-heading:#343a40;--color-grid-lines:#adb5bd;--color-grid-cell-bg:#fff;--color-button-disabled-bg:#6c757d;--color-spinner-track:#f3f3f3;--color-modal-bg:rgba(0,0,0,0.6);--color-modal-content-bg:white;--color-box-shadow:rgba(0,0,0,0.1);--color-box-shadow-hover:rgba(0,0,0,0.15);--color-primary:#007bff;--color-success:#28a745;--color-danger:#dc3545;--color-warning:#fd7e14;--color-info:#6f42c1;--color-pink:#d63384;--color-revealed-bg:rgba(40,167,69,0.3);--color-user-path-bg:rgba(0,123,255,0.3);--color-start-bg:var(--color-success);--color-end-bg:var(--color-danger);--color-cursor-shadow:rgba(0,123,255,0.7);}
         body.dark-mode{--color-background:#121212;--color-container-bg:#1e1e1e;--color-text-primary:#e0e0e0;--color-text-secondary:#888;--color-heading:#f1f1f1;--color-grid-lines:#444;--color-grid-cell-bg:#2a2a2a;--color-button-disabled-bg:#555;--color-spinner-track:#444;--color-modal-bg:rgba(0,0,0,0.8);--color-modal-content-bg:#2c2c2c;--color-box-shadow:rgba(0,0,0,0.3);--color-box-shadow-hover:rgba(0,0,0,0.4);--color-revealed-bg:rgba(40,167,69,0.4);--color-user-path-bg:rgba(0,123,255,0.4);--color-cursor-shadow:rgba(50,150,255,0.7)}
         body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:16px;color:var(--color-text-primary);background-color:var(--color-background);padding:20px;margin:0;display:flex;justify-content:center;align-items:flex-start;min-height:100vh;transition:background-color .3s,color .3s}
         .container{width:100%;max-width:900px;margin:0 auto}
@@ -26,8 +26,6 @@
         #grid div.solution-path{background-color:var(--color-revealed-bg)}
         #grid div.user-path{background-color:var(--color-user-path-bg)}
         #grid div.keyboard-cursor{box-shadow:inset 0 0 0 3px var(--color-cursor-shadow)}
-        #grid div.anim-visited{background-color:var(--color-anim-visited)!important}
-        #grid div.anim-path{background-color:var(--color-anim-path)!important}
         body.dark-mode .loader{background-color:var(--color-background)}
         .loader{position:absolute;top:0;left:0;right:0;bottom:0;background-color:var(--color-container-bg);display:flex;justify-content:center;align-items:center;flex-direction:column;gap:15px;z-index:10;font-size:1.1em;color:var(--color-text-secondary);border-radius:4px}
         .loader.hidden{opacity:0;pointer-events:none}
@@ -42,13 +40,12 @@
         .global-options-container{display:grid;grid-template-columns:1fr 1fr;gap:15px 25px;max-width:550px;margin:25px auto -10px;align-items:center}
         .option-group{display:grid;grid-template-columns:4.5em 1fr;align-items:center;gap:10px}
         .option-group label{font-weight:700;text-align:right}
-        .option-group select{width:100%;padding:8px;font-size:.9em;box-sizing:border-box;border:1px solid var(--color-grid-lines);border-radius:5px; height: 38px;}
-        .seed-group{display:flex;align-items:center;width:100%;}
-        #seed-input{flex-grow:1;border:1px solid var(--color-grid-lines);border-right:none;border-radius:5px 0 0 5px;padding:8px;font-size:.9em;height:38px;box-sizing:border-box;background-color:var(--color-grid-cell-bg);color:var(--color-text-primary)}
+        .option-group select{width:100%;padding:8px;font-size:.9em;box-sizing:border-box;border:1px solid var(--color-grid-lines);border-radius:5px;height:40px}
+        .seed-group{display:flex;align-items:center;width:100%;height:40px;}
+        #seed-input{flex-grow:1;border:1px solid var(--color-grid-lines);border-right:none;border-radius:5px 0 0 5px;padding:8px;font-size:.9em;height:100%;box-sizing:border-box;background-color:var(--color-grid-cell-bg);color:var(--color-text-primary)}
         body.dark-mode #seed-input{background-color:#fff;color:#000}
         #seed-input:focus{outline:none}
-        #random-seed-btn{padding:0;width:40px;height:38px;line-height:38px;font-size:1.2em;background:var(--color-text-secondary);border:none;color:#fff;cursor:pointer;flex-shrink:0;display:flex;justify-content:center;align-items:center;border-radius:0 5px 5px 0}
-        #animation-options{grid-column:1 / -1;display:flex;justify-content:center;align-items:center;gap:10px;padding-top:5px;font-size:.9em}
+        #random-seed-btn{padding:0;width:40px;height:100%;line-height:38px;font-size:1.2em;background:var(--color-text-secondary);border:1px solid var(--color-text-secondary);border-left:none;color:#fff;cursor:pointer;flex-shrink:0;display:flex;justify-content:center;align-items:center;border-radius:0 5px 5px 0}
         button{padding:12px 20px;font-size:1em;font-weight:700;cursor:pointer;color:#fff;border:none;border-radius:5px;transition:all .2s;box-shadow:0 2px 4px var(--color-box-shadow);width:100%;box-sizing:border-box}
         button:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 4px 8px var(--color-box-shadow-hover)}
         button:disabled{background-color:var(--color-button-disabled-bg);cursor:not-allowed;opacity:.7}
@@ -147,10 +144,6 @@
                     <button id="random-seed-btn" title="Random Seed">🎲</button>
                 </div>
             </div>
-            <div id="animation-options">
-                <label for="animate-gen-checkbox">Animate Generation</label>
-                <input type="checkbox" id="animate-gen-checkbox">
-            </div>
         </div>
 
         <div class="controls-grid" id="main-controls">
@@ -186,7 +179,7 @@
 
 
         <div id="status-container"><p id="source-status"></p></div>
-        <div id="version-info">v0.11</div>
+        <div id="version-info">v0.12</div>
     </div>
 
     <div id="completion-modal" onclick="hideCompletionModal()">
@@ -225,8 +218,7 @@
             mainControls: document.getElementById('main-controls'),
             generateBookControls: document.getElementById('generate-book-controls'),
             globalOptions: document.getElementById('global-options-container'),
-            completionModal: document.getElementById('completion-modal'),
-            animateGenCheckbox: document.getElementById('animate-gen-checkbox')
+            completionModal: document.getElementById('completion-modal')
         };
         
         function cyrb128(str) { let h1=1779033703,h2=3144134277,h3=1013904242,h4=2773480762; for (let i=0,k;i<str.length;i++){k=str.charCodeAt(i);h1=h2^Math.imul(h1^k,597399067);h2=h3^Math.imul(h2^k,2869860233);h3=h4^Math.imul(h3^k,951274213);h4=h1^Math.imul(h4^k,2716044179)} h1=Math.imul(h3^(h1>>>18),597399067);h2=Math.imul(h4^(h2>>>22),2869860233);h3=Math.imul(h1^(h3>>>17),951274213);h4=Math.imul(h2^(h4>>>19),2716044179); return(h1^h2^h3^h4)>>>0 }
@@ -236,7 +228,7 @@
 
         async function generatePuzzle(isForBook = false) {
             animationToken++; 
-            isAnimating = ui.animateGenCheckbox.checked && !isForBook;
+            isAnimating = false;
 
             gridSize = parseInt(ui.gridSizeSelect.value, 10);
             const mazeType = ui.mazeTypeSelect.value;
@@ -245,29 +237,21 @@
             rng = mulberry32(cyrb128(seed));
 
             const loaderMessage = gridSize >= 75 ? "Generating large maze..." : "Generating Maze...";
-            if (!isForBook) { setUiLoading(true, isAnimating ? "Animating..." : loaderMessage); ui.completionModal.classList.remove('visible'); }
+            if (!isForBook) { setUiLoading(true, loaderMessage); ui.completionModal.classList.remove('visible'); }
             
             userPath = []; solutionPath = []; startTime = null; ui.revealBtn.disabled = false;
             
             await new Promise(resolve => setTimeout(resolve, 30));
 
             try {
-                let mazeGrid, animationSteps = [];
-                currentGridState = createEmptyGrid(gridSize, gridSize);
+                let mazeGrid;
                 
                 switch(mazeType) {
-                    case 'prim': [mazeGrid, animationSteps] = generateMazePrim(gridSize, gridSize); break;
-                    case 'binary': [mazeGrid, animationSteps] = generateMazeBinaryTree(gridSize, gridSize); break;
-                    case 'kruskal': [mazeGrid, animationSteps] = generateMazeKruskal(gridSize, gridSize); break;
-                    case 'wilsons': [mazeGrid, animationSteps] = generateMazeWilsons(gridSize, gridSize); break;
-                    default: [mazeGrid, animationSteps] = generateMazeRecursiveBacktracker(gridSize, gridSize); break;
-                }
-                
-                if (isAnimating) {
-                    ui.grid.innerHTML = '';
-                    updateGridDisplay(true); // Initial blank grid
-                    document.getElementById('grid-wrapper').style.visibility = 'visible';
-                    await runAnimation(animationToken, animationSteps);
+                    case 'prim': mazeGrid = generateMazePrim(gridSize, gridSize); break;
+                    case 'binary': mazeGrid = generateMazeBinaryTree(gridSize, gridSize); break;
+                    case 'kruskal': mazeGrid = generateMazeKruskal(gridSize, gridSize); break;
+                    case 'wilsons': mazeGrid = generateMazeWilsons(gridSize, gridSize); break;
+                    default: mazeGrid = generateMazeRecursiveBacktracker(gridSize, gridSize); break;
                 }
                 
                 startCoords = { x: 0, y: 0 };
@@ -282,6 +266,7 @@
                     puzzleConfigKey = `${gridSize}-${mazeType}-${seed}`;
                     ui.status.textContent = `Type: ${ui.mazeTypeSelect.options[ui.mazeTypeSelect.selectedIndex].text}`;
                     updateGridDisplay();
+                    document.getElementById('grid-wrapper').style.visibility = 'visible';
                     document.getElementById('instructions-container').style.visibility = 'visible'; 
                     startTime = Date.now();
                 }
@@ -291,7 +276,6 @@
                 if (error.message !== "Animation cancelled") { ui.status.textContent = `Error: ${error.message}`; console.error(error); }
                 return null;
             } finally {
-                isAnimating = false;
                 if (!isForBook) { setUiLoading(false); }
             }
         }
@@ -299,12 +283,11 @@
         function createEmptyGrid(width, height) { return Array(height).fill(null).map((_, y) => Array(width).fill(null).map((_, x) => ({ x, y, walls: [true, true, true, true], visited: false }))); }
         function getNeighbors(cell, grid, allDirs = false) { const { x, y } = cell; const neighbors = []; const directions = [{x:0, y:-1}, {x:1, y:0}, {x:0, y:1}, {x:-1, y:0}]; for (const dir of directions) { const nX = x + dir.x, nY = y + dir.y; if (nX >= 0 && nX < grid[0].length && nY >= 0 && nY < grid.length) { const neighbor = grid[nY][nX]; if(allDirs || !neighbor.visited) neighbors.push(neighbor); } } return neighbors; }
         function removeWall(a, b) { const dX = a.x - b.x, dY = a.y - b.y; if (dX === 1) { a.walls[3] = false; b.walls[1] = false; } else if (dX === -1) { a.walls[1] = false; b.walls[3] = false; } if (dY === 1) { a.walls[0] = false; b.walls[2] = false; } else if (dY === -1) { a.walls[2] = false; b.walls[0] = false; } }
-
-        function generateMazeRecursiveBacktracker(w,h){const g=createEmptyGrid(w,h);const s=[g[0][0]];g[0][0].visited=!0;const a=[];while(s.length>0){const c=s.pop();const n=getNeighbors(c,g);if(n.length>0){s.push(c);const N=n[Math.floor(rng()*n.length)];removeWall(c,N);N.visited=!0;s.push(N);a.push({c1:c,c2:N})}}return[g,a]}
-        function generateMazePrim(w,h){const g=createEmptyGrid(w,h);const f=[];const sX=Math.floor(rng()*w),sY=Math.floor(rng()*h);g[sY][sX].visited=!0;const a=[{c1:g[sY][sX],type:'visit'}];getNeighbors(g[sY][sX],g,!0).forEach(n=>f.push(n));while(f.length>0){const fI=Math.floor(rng()*f.length);const c=f.splice(fI,1)[0];const iN=getNeighbors(c,g,!0).filter(n=>n.visited);if(iN.length>0){const N=iN[Math.floor(rng()*iN.length)];removeWall(c,N);c.visited=!0;a.push({c1:c,c2:N});getNeighbors(c,g,!0).filter(n=>!n.visited).forEach(n=>{if(!f.some(fr=>fr.x===n.x&&fr.y===n.y))f.push(n)})}}return[g,a]}
-        function generateMazeBinaryTree(w,h){const g=createEmptyGrid(w,h);const a=[];for(let y=0;y<h;y++){for(let x=0;x<w;x++){const c=g[y][x];const n=[];if(y>0)n.push(g[y-1][x]);if(x>0)n.push(g[y][x-1]);if(n.length>0){const N=n[Math.floor(rng()*n.length)];removeWall(c,N);a.push({c1:c,c2:N})}}}return[g,a]}
-        function generateMazeKruskal(w,h){const g=createEmptyGrid(w,h);const e=[];const s=[];const a=[];for(let y=0;y<h;y++){for(let x=0;x<w;x++){s[y*w+x]=y*w+x;if(y>0)e.push({c1:g[y][x],c2:g[y-1][x]});if(x>0)e.push({c1:g[y][x],c2:g[y][x-1]})}}for(let i=e.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[e[i],e[j]]=[e[j],e[i]]}const find=i=>s[i]===i?i:(s[i]=find(s[i]));const union=(i,j)=>{const rI=find(i),rJ=find(j);if(rI!==rJ)s[rI]=rJ};for(const edge of e){const{c1,c2}=edge;const n1=c1.y*w+c1.x,n2=c2.y*w+c2.x;if(find(n1)!==find(n2)){removeWall(c1,c2);union(n1,n2);a.push({c1,c2})}}return[g,a]}
-        function generateMazeWilsons(w,h){const g=createEmptyGrid(w,h);const u=[];g.forEach(r=>r.forEach(c=>u.push(c)));const fC=u.splice(Math.floor(rng()*u.length),1)[0];fC.visited=!0;const a=[{c1:fC,type:'visit'}];while(u.length>0){let c=u[Math.floor(rng()*u.length)];let p=[c];while(!c.visited){const n=getNeighbors(c,g,!0);c=n[Math.floor(rng()*n.length)];const pI=p.findIndex(cell=>cell.x===c.x&&cell.y===c.y);if(pI!==-1){p.splice(pI+1)}else{p.push(c)}}for(let i=0;i<p.length-1;i++){removeWall(p[i],p[i+1]);p[i].visited=!0;a.push({c1:p[i],c2:p[i+1],type:'path'});const uI=u.findIndex(cell=>cell.x===p[i].x&&cell.y===p[i].y);if(uI!==-1)u.splice(uI,1)}}return[g,a]}
+        function generateMazeRecursiveBacktracker(w,h){const g=createEmptyGrid(w,h);const s=[g[0][0]];g[0][0].visited=!0;while(s.length>0){const c=s.pop();const n=getNeighbors(c,g);if(n.length>0){s.push(c);const N=n[Math.floor(rng()*n.length)];removeWall(c,N);N.visited=!0;s.push(N)}}return g}
+        function generateMazePrim(w,h){const g=createEmptyGrid(w,h);const f=[];const sX=Math.floor(rng()*w),sY=Math.floor(rng()*h);g[sY][sX].visited=!0;getNeighbors(g[sY][sX],g,!0).forEach(n=>f.push(n));while(f.length>0){const fI=Math.floor(rng()*f.length);const c=f.splice(fI,1)[0];const iN=getNeighbors(c,g,!0).filter(n=>n.visited);if(iN.length>0){const N=iN[Math.floor(rng()*iN.length)];removeWall(c,N);c.visited=!0;getNeighbors(c,g,!0).filter(n=>!n.visited).forEach(n=>{if(!f.some(fr=>fr.x===n.x&&fr.y===n.y))f.push(n)})}}return g}
+        function generateMazeBinaryTree(w,h){const g=createEmptyGrid(w,h);for(let y=0;y<h;y++){for(let x=0;x<w;x++){const c=g[y][x];const n=[];if(y>0)n.push(g[y-1][x]);if(x>0)n.push(g[y][x-1]);if(n.length>0){const N=n[Math.floor(rng()*n.length)];removeWall(c,N)}}}return g}
+        function generateMazeKruskal(w,h){const g=createEmptyGrid(w,h);const e=[];const s=[];for(let y=0;y<h;y++){for(let x=0;x<w;x++){s[y*w+x]=y*w+x;if(y>0)e.push({c1:g[y][x],c2:g[y-1][x]});if(x>0)e.push({c1:g[y][x],c2:g[y][x-1]})}}for(let i=e.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[e[i],e[j]]=[e[j],e[i]]}const find=i=>s[i]===i?i:(s[i]=find(s[i]));const union=(i,j)=>{const rI=find(i),rJ=find(j);if(rI!==rJ)s[rI]=rJ};for(const edge of e){const{c1,c2}=edge;const n1=c1.y*w+c1.x,n2=c2.y*w+c2.x;if(find(n1)!==find(n2)){removeWall(c1,c2);union(n1,n2)}}return g}
+        function generateMazeWilsons(w,h){const g=createEmptyGrid(w,h);const u=[];g.forEach(r=>r.forEach(c=>u.push(c)));const fC=u.splice(Math.floor(rng()*u.length),1)[0];fC.visited=!0;while(u.length>0){let c=u[Math.floor(rng()*u.length)];let p=[c];while(!c.visited){const n=getNeighbors(c,g,!0);c=n[Math.floor(rng()*n.length)];const pI=p.findIndex(cell=>cell.x===c.x&&cell.y===c.y);if(pI!==-1){p.splice(pI+1)}else{p.push(c)}}for(let i=0;i<p.length-1;i++){removeWall(p[i],p[i+1]);p[i].visited=!0;const uI=u.findIndex(cell=>cell.x===p[i].x&&cell.y===p[i].y);if(uI!==-1)u.splice(uI,1)}}return g}
         
         function findSolutionPath(grid, start, end) { const queue = [[start]]; const visited = new Set([`${start.x},${start.y}`]); while(queue.length > 0) { const path = queue.shift(); const { x, y } = path[path.length - 1]; if (x === end.x && y === end.y) return path; const cell = grid[y][x]; const directions = [{x:0, y:-1}, {x:1, y:0}, {x:0, y:1}, {x:-1, y:0}]; for (let i = 0; i < directions.length; i++) { if (!cell.walls[i]) { const nX = x + directions[i].x, nY = y + directions[i].y; const key = `${nX},${nY}`; if (!visited.has(key)) { visited.add(key); queue.push([...path, {x: nX, y: nY}]); } } } } return []; }
         function setUiLoading(isLoading, message = '') { document.querySelectorAll('button, select, input').forEach(b=>b.disabled=isLoading); ui.loader.classList.toggle('hidden',!isLoading); ui.loaderText.textContent=message; document.getElementById('cancel-btn').style.display='none'; }
@@ -312,7 +295,6 @@
         function updateCellDisplay(cell) { const { x, y, walls } = cell; if (!cell.domElement) cell.domElement = ui.grid.querySelector(`[data-x='${x}'][data-y='${y}']`); if (!cell.domElement) return; cell.domElement.className = ''; if (walls[0]) cell.domElement.classList.add('wall-top'); if (walls[1]) cell.domElement.classList.add('wall-right'); if (walls[2]) cell.domElement.classList.add('wall-bottom'); if (walls[3]) cell.domElement.classList.add('wall-left'); if (x === startCoords?.x && y === startCoords?.y) cell.domElement.classList.add('start-cell'); if (x === endCoords?.x && y === endCoords?.y) cell.domElement.classList.add('end-cell'); }
         function updateGridDisplay(blank = false) { ui.grid.innerHTML=''; const pW=Math.min(document.getElementById('puzzle-container').clientWidth,800); let cS=Math.floor(pW/gridSize); cS=Math.max(2,cS); ui.grid.style.gridTemplateColumns=`repeat(${gridSize},${cS}px)`; ui.grid.style.gridTemplateRows=`repeat(${gridSize},${cS}px)`; const wW=Math.max(1,Math.floor(cS/12)); document.getElementById('dynamic-grid-styles').innerHTML=`#grid div.wall-top{border-top-width:${wW}px;border-top-style:solid}#grid div.wall-right{border-right-width:${wW}px;border-right-style:solid}#grid div.wall-bottom{border-bottom-width:${wW}px;border-bottom-style:solid}#grid div.wall-left{border-left-width:${wW}px;border-left-style:solid}#grid div.keyboard-cursor{box-shadow:inset 0 0 0 ${Math.max(2,wW+1)}px var(--color-cursor-shadow)}`; for(let y=0;y<gridSize;y++){for(let x=0;x<gridSize;x++){const c=document.createElement('div');c.dataset.x=x;c.dataset.y=y;const cD=currentGridState[y][x];cD.domElement = c; if(!blank) updateCellDisplay(cD); ui.grid.appendChild(c)}}if(!blank)redrawUserPath()}
         function redrawUserPath() { document.querySelectorAll('#grid div.user-path,#grid div.keyboard-cursor').forEach(c=>{c.classList.remove('user-path','keyboard-cursor')}); userPath.forEach(p=>{const c=ui.grid.querySelector(`[data-x='${p.x}'][data-y='${p.y}']`);if(c)c.classList.add('user-path')}); if(userPath.length>0){const lP=userPath[userPath.length-1];const cC=ui.grid.querySelector(`[data-x='${lP.x}'][data-y='${lP.y}']`);if(cC)cC.classList.add('keyboard-cursor')}}
-        async function runAnimation(token, steps) { const batchSize = Math.max(1, Math.ceil(steps.length / 150)); for (let i = 0; i < steps.length; i += batchSize) { if (token !== animationToken) throw new Error("Animation cancelled"); const batch = steps.slice(i, i + batchSize); batch.forEach(step => { const {c1, c2, type} = step; if (c1 && !c1.domElement) c1.domElement = ui.grid.querySelector(`[data-x='${c1.x}'][data-y='${c1.y}']`); if (c2 && !c2.domElement) c2.domElement = ui.grid.querySelector(`[data-x='${c2.x}'][data-y='${c2.y}']`); if (c1?.domElement) { if(c2) updateCellDisplay(c1); c1.domElement.classList.add(type === 'path' ? 'anim-path' : 'anim-visited'); } if (c2?.domElement) { updateCellDisplay(c2); } }); await new Promise(r => requestAnimationFrame(r)); batch.forEach(step => { if (step.c1?.domElement) step.c1.domElement.classList.remove('anim-visited', 'anim-path'); }); } }
         function revealSolution() { if(solutionPath.length === 0 || isAnimating) return; isAnimating = true; ui.revealBtn.disabled = true; let i = 0; const currentToken = ++animationToken; function animate() { if (i < solutionPath.length && currentToken === animationToken) { const pos = solutionPath[i]; const cell = ui.grid.querySelector(`[data-x='${pos.x}'][data-y='${pos.y}']`); if(cell) cell.classList.add('solution-path'); i++; requestAnimationFrame(animate); } else { isAnimating = false; } } animate(); }
         
         function showBookOptions() { ui.mainControls.style.display='none';ui.generateBookControls.style.display='block';ui.globalOptions.style.display='none'}
@@ -326,7 +308,7 @@
         function handleInteractionStart(tC){if(!tC||isDrawing||isAnimating)return;const x=parseInt(tC.dataset.x,10),y=parseInt(tC.dataset.y,10);if(x===startCoords.x&&y===startCoords.y){isDrawing=true;userPath=[{x,y}];redrawUserPath()}}
         function handleInteractionMove(tC){if(!isDrawing||!tC||isAnimating)return;const x=parseInt(tC.dataset.x,10),y=parseInt(tC.dataset.y,10);const lP=userPath[userPath.length-1];if(x===lP.x&&y===lP.y)return;if(userPath.length>1&&userPath[userPath.length-2].x===x&&userPath[userPath.length-2].y===y){userPath.pop()}else{const cD=currentGridState[lP.y][lP.x];const dX=x-lP.x,dY=y-lP.y;if(Math.abs(dX)+Math.abs(dY)===1){let wI=dY===-1?0:dX===1?1:dY===1?2:3;if(!cD.walls[wI])userPath.push({x,y})}}redrawUserPath();if(x===endCoords.x&&y===endCoords.y)handleInteractionEnd()}
         function handleInteractionEnd(){if(!isDrawing)return;isDrawing=false;const lP=userPath[userPath.length-1];if(lP&&lP.x===endCoords.x&&lP.y===endCoords.y){handlePuzzleCompletion(Date.now()-startTime)}}
-        function handleKeyDown(e){if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight', 'r'].includes(e.key)||isDrawing||isAnimating)return; if(document.activeElement.tagName === 'INPUT') return; e.preventDefault(); if(e.key.toLowerCase()==='r'){revealSolution();return} if(userPath.length===0) return; const lP=userPath[userPath.length-1];let tP,wI=-1;switch(e.key){case'ArrowUp':tP={x:lP.x,y:lP.y-1};wI=0;break;case'ArrowDown':tP={x:lP.x,y:lP.y+1};wI=2;break;case'ArrowLeft':tP={x:lP.x-1,y:lP.y};wI=3;break;case'ArrowRight':tP={x:lP.x+1,y:lP.y};wI=1;break}if(userPath.length>1&&tP.x===userPath[userPath.length-2].x&&tP.y===userPath[userPath.length-2].y){userPath.pop()}else{if(tP.x>=0&&tP.x<gridSize&&tP.y>=0&&tP.y<gridSize){const cD=currentGridState[lP.y][lP.x];if(!cD.walls[wI]){userPath.push(tP)}}}redrawUserPath();const nLP=userPath[userPath.length-1];if(nLP.x===endCoords.x&&nLP.y===endCoords.y){handlePuzzleCompletion(Date.now()-startTime)}}
+        function handleKeyDown(e){const activeEl = document.activeElement; if (activeEl && activeEl.tagName === 'INPUT') return; if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight', 'r', 'R'].includes(e.key)||isDrawing||isAnimating)return;e.preventDefault();if(e.key.toLowerCase()==='r'){revealSolution();return}if(userPath.length===0) return;const lP=userPath[userPath.length-1];let tP,wI=-1;switch(e.key){case'ArrowUp':tP={x:lP.x,y:lP.y-1};wI=0;break;case'ArrowDown':tP={x:lP.x,y:lP.y+1};wI=2;break;case'ArrowLeft':tP={x:lP.x-1,y:lP.y};wI=3;break;case'ArrowRight':tP={x:lP.x+1,y:lP.y};wI=1;break}if(userPath.length>1&&tP.x===userPath[userPath.length-2].x&&tP.y===userPath[userPath.length-2].y){userPath.pop()}else{if(tP.x>=0&&tP.x<gridSize&&tP.y>=0&&tP.y<gridSize){const cD=currentGridState[lP.y][lP.x];if(!cD.walls[wI]){userPath.push(tP)}}}redrawUserPath();const nLP=userPath[userPath.length-1];if(nLP.x===endCoords.x&&nLP.y===endCoords.y){handlePuzzleCompletion(Date.now()-startTime)}}
 
         function formatTime(ms){const s=Math.floor(ms/1000);return`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`}
         function handlePuzzleCompletion(eT){const bT=localStorage.getItem(puzzleConfigKey);let iNB=false;if(bT===null||eT<parseInt(bT,10)){localStorage.setItem(puzzleConfigKey,eT);iNB=true}document.getElementById('your-time').textContent=`Your time: ${formatTime(eT)}`;document.getElementById('best-time').textContent=`Best time: ${formatTime(localStorage.getItem(puzzleConfigKey))}`;document.getElementById('new-best-time').textContent=iNB?'New Best Time!':'';ui.completionModal.classList.add('visible');ui.revealBtn.disabled=true}
