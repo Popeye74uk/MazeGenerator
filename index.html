@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Maze Generator v0.25</title>
+    <title>Maze Generator v0.26</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         :root{--color-background:#f8f9fa;--color-container-bg:#f8f9fa;--color-text-primary:#333;--color-text-secondary:#6c757d;--color-heading:#343a40;--color-grid-lines:#adb5bd;--color-grid-cell-bg:#fff;--color-button-disabled-bg:#6c757d;--color-spinner-track:#f3f3f3;--color-modal-bg:rgba(0,0,0,0.6);--color-modal-content-bg:white;--color-box-shadow:rgba(0,0,0,0.1);--color-box-shadow-hover:rgba(0,0,0,0.15);--color-primary:#007bff;--color-success:#28a745;--color-danger:#dc3545;--color-warning:#fd7e14;--color-info:#6f42c1;--color-pink:#d63384;--color-revealed-bg:rgba(40,167,69,0.3);--color-user-path-bg:rgba(0,123,255,0.3);--color-solved-path-bg:rgba(255,193,7,0.7);--color-start-bg:var(--color-success);--color-end-bg:var(--color-danger);--color-cursor-shadow:rgba(0,123,255,0.7); --color-board-bg: #121212;}
@@ -231,7 +231,7 @@
 
         <div id="status-container"><p id="source-status"></p></div>
         <div id="game-mode-status"></div>
-        <div id="version-info">v0.24</div>
+        <div id="version-info">v0.25</div>
     </div>
     
     <script>
@@ -585,7 +585,7 @@
             d.setFillColor(40, 167, 69).rect(startX + pdfStart.x * cellSize, startY + pdfStart.y * cellSize, cellSize, cellSize, 'F');
             d.setFillColor(220, 53, 69).rect(startX + pdfEnd.x * cellSize, startY + pdfEnd.y * cellSize, cellSize, cellSize, 'F');
             
-            d.setFont('helvetica', 'bold').setTextColor(255,255,255).setFontSize(cellSize * 0.7);
+            d.setFont('helvetica', 'bold').setTextColor(255,255,255).setFontSize(cellSize * 0.8);
             d.text('S', startX + pdfStart.x * cellSize + cellSize/2, startY + pdfStart.y * cellSize + cellSize/2, {align:'center', baseline: 'middle'});
             d.text('F', startX + pdfEnd.x * cellSize + cellSize/2, startY + pdfEnd.y * cellSize + cellSize/2, {align:'center', baseline: 'middle'});
 
