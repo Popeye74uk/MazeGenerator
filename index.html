@@ -41,22 +41,29 @@
         #instructions-list{list-style-position:inside;padding:0;margin:0 auto;display:inline-block;text-align:left}
         #instructions-list li{padding:4px 0;font-size:.95em;color:var(--color-text-primary)}
         .controls-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px;max-width:415px;margin:25px auto 0}
-        .global-options-container{display:grid;grid-template-columns:1fr 1fr;gap:15px 25px;max-width:550px;margin:25px auto -10px;align-items:center}
-        .option-group{display:grid;grid-template-columns:4.5em 1fr;align-items:center;gap:10px}
+        #custom-maze-options{max-width:415px;margin:25px auto 0; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px var(--color-box-shadow);}
+        .option-group{display:grid;grid-template-columns:4.5em 1fr;align-items:center;gap:10px;margin-bottom:15px}
         .option-group label{font-weight:700;text-align:right}
         .option-group select{width:100%;padding:8px;font-size:.9em;box-sizing:border-box;border:1px solid var(--color-grid-lines);border-radius:5px;height:40px}
-        .seed-group{display:flex;align-items:center;width:100%;height:40px;}
-        #seed-input{flex-grow:1;border:1px solid var(--color-grid-lines);border-right:none;border-radius:5px 0 0 5px;padding:8px;font-size:.9em;height:100%;box-sizing:border-box;background-color:var(--color-grid-cell-bg);color:var(--color-text-primary)}
+        .seed-container{max-width:415px;margin:20px auto -10px;display:flex;align-items:center;gap:10px}
+        .seed-container label{font-weight:700;flex-shrink:0}
+        .seed-group{display:flex;align-items:center;width:100%;height:40px}
+        #seed-input{flex-grow:1;border:1px solid var(--color-grid-lines);border-radius:5px 0 0 5px;padding:8px;font-size:.9em;height:100%;box-sizing:border-box;background-color:var(--color-grid-cell-bg);color:var(--color-text-primary);border-right:none;}
         body.dark-mode #seed-input{background-color:#fff;color:#000}
         #seed-input:focus{outline:none}
-        #random-seed-btn{padding:0;width:40px;height:100%;line-height:38px;font-size:1.2em;background:var(--color-text-secondary);border:1px solid var(--color-text-secondary);border-left:none;color:#fff;cursor:pointer;flex-shrink:0;display:flex;justify-content:center;align-items:center;border-radius:0 5px 5px 0}
+        #play-seed-btn, #random-seed-btn{padding:0;width:40px;height:100%;line-height:38px;font-size:1.2em;background:var(--color-text-secondary);border:1px solid var(--color-text-secondary);color:#fff;cursor:pointer;flex-shrink:0;display:flex;justify-content:center;align-items:center}
+        #play-seed-btn { border-radius: 0; border-right: none; background-color: var(--color-success); border-color: var(--color-success); }
+        #random-seed-btn{border-radius:0 5px 5px 0}
         button{padding:12px 20px;font-size:1em;font-weight:700;cursor:pointer;color:#fff;border:none;border-radius:5px;transition:all .2s;box-shadow:0 2px 4px var(--color-box-shadow);width:100%;box-sizing:border-box}
         button:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 4px 8px var(--color-box-shadow-hover)}
         button:disabled{background-color:var(--color-button-disabled-bg);cursor:not-allowed;opacity:.7}
-        #generate-btn{background-color:var(--color-primary)}
+        #new-random-maze-btn{background-color:var(--color-primary)}
+        #custom-maze-btn { background-color: var(--color-warning); }
         #reveal-btn{background-color:var(--color-success)}
         #download-pdf-btn{background-color:var(--color-pink)}
-        #make-book-btn{background-color:var(--color-danger)}
+        #make-book-btn{background-color:var(--color-danger); grid-column: 1 / -1;}
+        #create-puzzle-btn{background-color:var(--color-danger)}
+        #cancel-custom-btn {background-color: var(--color-text-secondary);}
         #create-book-btn{background-color:var(--color-danger)}
         #cancel-btn,#cancel-book-options-btn{background-color:var(--color-text-secondary)}
         #cancel-btn{min-width:120px;width:auto}
@@ -83,8 +90,8 @@
         .icon-sun,.icon-moon{display:none}
         body.dark-mode .icon-sun{display:block}
         body:not(.dark-mode) .icon-moon{display:block}
-        @media print{@page{size:A4;margin:.5in}body{background-color:#fff;font-size:12pt;margin:0;padding:0}.container{width:100%;margin:0;padding:0;box-shadow:none}.main-header,.global-options-container,.controls-grid,#generate-book-controls,#status-container,#game-mode-status,#version-info{display:none}#grid-wrapper{border:2px solid #333}#grid{border:none}#instructions-container{margin-top:15px}}
-        @media (max-width:768px){.book-options-grid{grid-template-columns:1fr}.book-options-grid label{text-align:left;margin-left:5px}.global-options-container{grid-template-columns:1fr}}
+        @media print{@page{size:A4;margin:.5in}body{background-color:#fff;font-size:12pt;margin:0;padding:0}.container{width:100%;margin:0;padding:0;box-shadow:none}.main-header,.seed-container,#custom-maze-options,.controls-grid,#generate-book-controls,#status-container,#game-mode-status,#version-info{display:none}#grid-wrapper{border:2px solid #333}#grid{border:none}#instructions-container{margin-top:15px}}
+        @media (max-width:768px){.book-options-grid{grid-template-columns:1fr}.book-options-grid label{text-align:left;margin-left:5px}}
         @media (max-width:480px){.main-header h1{font-size:1.5em}#book-checkbox-options{flex-direction:column;align-items:flex-start;gap:12px}.modal-content h2{font-size:2em}.controls-grid{grid-template-columns:1fr}}
     </style>
     <style id="dynamic-grid-styles"></style>
@@ -119,10 +126,28 @@
             </ul>
         </div>
         
-        <div class="global-options-container" id="global-options-container">
+        <div class="seed-container">
+            <label for="seed-input">Seed:</label>
+            <div class="seed-group">
+                <input type="text" id="seed-input" placeholder="Any text for repeatable maze">
+                <button id="play-seed-btn" title="Generate from Seed">▶</button>
+                <button id="random-seed-btn" title="Random Seed">🎲</button>
+            </div>
+        </div>
+
+        <div class="controls-grid" id="main-controls">
+            <button id="new-random-maze-btn">New Random Maze</button>
+            <button id="custom-maze-btn">Custom Maze</button>
+            <button id="reveal-btn">Reveal Solution</button>
+            <button id="download-pdf-btn">Download as PDF</button>
+            <button id="make-book-btn">Make Book</button>
+        </div>
+
+        <div id="custom-maze-options" style="display: none;">
+            <h3 style="text-align: center; margin-top: 0;">Custom Maze Options</h3>
             <div class="option-group">
                 <label for="grid-size-select">Size:</label>
-                <select id="grid-size-select" onchange="triggerGeneratePuzzle()">
+                <select id="grid-size-select">
                     <option value="15">15x15</option>
                     <option value="20" selected>20x20</option>
                     <option value="25">25x25</option>
@@ -133,7 +158,7 @@
             </div>
             <div class="option-group">
                 <label for="maze-type-select">Maze:</label>
-                <select id="maze-type-select" onchange="triggerGeneratePuzzle()">
+                <select id="maze-type-select">
                     <option value="binary">Binary Tree (Easy)</option>
                     <option value="prim">Prim's Algorithm</option>
                     <option value="kruskal">Kruskal's Algorithm</option>
@@ -143,27 +168,17 @@
             </div>
              <div class="option-group">
                 <label for="game-mode-select">Mode:</label>
-                <select id="game-mode-select" onchange="triggerGeneratePuzzle()">
+                <select id="game-mode-select">
                     <option value="default">Start to End</option>
                     <option value="longest_path">Longest Path</option>
                     <option value="collect_stars">Collect the Stars</option>
                     <option value="blindfold">Blindfold</option>
                 </select>
             </div>
-            <div class="option-group">
-                <label for="seed-input">Seed:</label>
-                <div class="seed-group">
-                    <input type="text" id="seed-input" oninput="triggerGeneratePuzzle(true)" placeholder="Any text for repeatable maze">
-                    <button id="random-seed-btn" title="Random Seed">🎲</button>
-                </div>
+            <div class="controls-grid" style="margin-top: 10px;">
+                <button id="create-puzzle-btn">Create Puzzle</button>
+                <button id="cancel-custom-btn">Cancel</button>
             </div>
-        </div>
-
-        <div class="controls-grid" id="main-controls">
-            <button id="generate-btn" onclick="triggerGeneratePuzzle()">New Maze</button>
-            <button id="reveal-btn" onclick="revealSolution()">Reveal Solution</button>
-            <button id="download-pdf-btn" onclick="downloadPdf()">Download as PDF</button>
-            <button id="make-book-btn" onclick="showBookOptions()">Make Book</button>
         </div>
 
         <div id="generate-book-controls">
@@ -185,8 +200,8 @@
                 </div>
             </div>
             <div class="controls-grid">
-                <button id="create-book-btn" onclick="downloadBook()">Create Book</button>
-                <button id="cancel-book-options-btn" onclick="resetBookUI()">Cancel</button>
+                <button id="create-book-btn">Create Book</button>
+                <button id="cancel-book-options-btn">Cancel</button>
             </div>
         </div>
 
@@ -203,7 +218,7 @@
                 <p id="best-time"></p>
                 <p id="new-best-time"></p>
             </div>
-            <button onclick="triggerGeneratePuzzle()">Play Again?</button>
+            <button id="play-again-btn">Play Again?</button>
         </div>
     </div>
     
@@ -232,16 +247,26 @@
             gameModeSelect: document.getElementById('game-mode-select'),
             seedInput: document.getElementById('seed-input'),
             randomSeedBtn: document.getElementById('random-seed-btn'),
+            playSeedBtn: document.getElementById('play-seed-btn'),
             mainControls: document.getElementById('main-controls'),
             generateBookControls: document.getElementById('generate-book-controls'),
-            globalOptions: document.getElementById('global-options-container'),
-            completionModal: document.getElementById('completion-modal')
+            customMazeOptions: document.getElementById('custom-maze-options'),
+            completionModal: document.getElementById('completion-modal'),
+            newRandomMazeBtn: document.getElementById('new-random-maze-btn'),
+            customMazeBtn: document.getElementById('custom-maze-btn'),
+            createPuzzleBtn: document.getElementById('create-puzzle-btn'),
+            cancelCustomBtn: document.getElementById('cancel-custom-btn'),
+            downloadPdfBtn: document.getElementById('download-pdf-btn'),
+            makeBookBtn: document.getElementById('make-book-btn'),
+            createBookBtn: document.getElementById('create-book-btn'),
+            cancelBookOptionsBtn: document.getElementById('cancel-book-options-btn'),
+            playAgainBtn: document.getElementById('play-again-btn')
         };
         
         function cyrb128(str) { let h1=1779033703,h2=3144134277,h3=1013904242,h4=2773480762; for (let i=0,k;i<str.length;i++){k=str.charCodeAt(i);h1=h2^Math.imul(h1^k,597399067);h2=h3^Math.imul(h2^k,2869860233);h3=h4^Math.imul(h3^k,951274213);h4=h1^Math.imul(h4^k,2716044179)} h1=Math.imul(h3^(h1>>>18),597399067);h2=Math.imul(h4^(h2>>>22),2869860233);h3=Math.imul(h1^(h3>>>17),951274213);h4=Math.imul(h2^(h4>>>19),2716044179); return(h1^h2^h3^h4)>>>0 }
         function mulberry32(a){ return function(){let t=a+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296} }
         
-        function triggerGeneratePuzzle(isDebounced = false) { clearTimeout(debounceTimeout); debounceTimeout = setTimeout(() => generatePuzzle(), isDebounced ? 400 : 20); }
+        function triggerGeneratePuzzle() { clearTimeout(debounceTimeout); debounceTimeout = setTimeout(() => generatePuzzle(), 20); }
 
         async function generatePuzzle(isForBook = false) {
             animationToken++; 
@@ -252,6 +277,7 @@
             gameMode = ui.gameModeSelect.value;
             let seed = ui.seedInput.value.trim() || Date.now().toString();
             if (isForBook && ui.seedInput.value.trim() === '') seed += Math.random();
+            if (!isForBook) ui.seedInput.value = seed; // Auto-populate seed
             rng = mulberry32(cyrb128(seed));
 
             const loaderMessage = gridSize >= 75 ? "Generating large maze..." : "Generating Maze...";
@@ -336,10 +362,22 @@
         function redrawUserPath() { document.querySelectorAll('#grid div.user-path, #grid div.keyboard-cursor, #grid div.solved-path, #grid div.visible-cell').forEach(c => { c.classList.remove('user-path', 'keyboard-cursor', 'solved-path', 'visible-cell') }); if (gameMode === 'blindfold' && userPath.length > 0) { const lastPos = userPath[userPath.length - 1]; const visibilityRadius = 2; for (let y = -visibilityRadius; y <= visibilityRadius; y++) { for (let x = -visibilityRadius; x <= visibilityRadius; x++) { if (Math.abs(x) + Math.abs(y) <= visibilityRadius) { const cell = ui.grid.querySelector(`[data-x='${lastPos.x + x}'][data-y='${lastPos.y + y}']`); if (cell) cell.classList.add('visible-cell'); } } } } userPath.forEach(p => { const cell = ui.grid.querySelector(`[data-x='${p.x}'][data-y='${p.y}']`); if (cell) { cell.classList.add('user-path'); if (gameMode === 'blindfold') cell.classList.add('visible-cell'); } }); if (userPath.length > 0) { const lastPos = userPath[userPath.length - 1]; const cursorCell = ui.grid.querySelector(`[data-x='${lastPos.x}'][data-y='${lastPos.y}']`); if (cursorCell) cursorCell.classList.add('keyboard-cursor'); const starIndex = stars.findIndex(s => s.x === lastPos.x && s.y === lastPos.y); if (starIndex > -1 && !collectedStars.some(s => s.x === lastPos.x && s.y === lastPos.y)) { collectedStars.push(stars[starIndex]); const starCell = ui.grid.querySelector(`.star-cell[data-x='${lastPos.x}'][data-y='${lastPos.y}']`); if (starCell) starCell.classList.remove('star-cell'); updateStarStatus(); } } }
         function revealSolution() { if(solutionPath.length === 0 || isAnimating) return; isAnimating = true; ui.revealBtn.disabled = true; let i = 0; const currentToken = ++animationToken; if(gameMode === 'blindfold') ui.grid.classList.remove('blindfold-mode'); function animate() { if (i < solutionPath.length && currentToken === animationToken) { const pos = solutionPath[i]; const cell = ui.grid.querySelector(`[data-x='${pos.x}'][data-y='${pos.y}']`); if(cell) cell.classList.add('solution-path'); i++; requestAnimationFrame(animate); } else { isAnimating = false; } } animate(); }
         
-        function showBookOptions() { ui.mainControls.style.display='none';ui.generateBookControls.style.display='block';ui.globalOptions.style.display='none'}
-        function resetBookUI() { ui.mainControls.style.display='grid';ui.generateBookControls.style.display='none';ui.globalOptions.style.display='grid'}
+        function setUIView(view) {
+            ui.mainControls.style.display = 'none';
+            ui.customMazeOptions.style.display = 'none';
+            ui.generateBookControls.style.display = 'none';
+
+            if (view === 'custom') {
+                ui.customMazeOptions.style.display = 'block';
+            } else if (view === 'book') {
+                ui.generateBookControls.style.display = 'block';
+            } else { // 'default'
+                ui.mainControls.style.display = 'grid';
+            }
+        }
+        
         function downloadPdf() { if(currentGridState.length===0){alert("Please generate a maze first.");return} const{jsPDF}=window.jspdf; const d=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'}); drawMazeOnPdfPage(d,{grid:currentGridState,solution:solutionPath,title:'Maze',start:startCoords,end:endCoords,stars:stars},false,null,false); d.save(`Maze-${gridSize}x${gridSize}-${ui.mazeTypeSelect.value}.pdf`)}
-        async function downloadBook() { const pC=parseInt(document.getElementById('puzzle-count-input').value,10); if(isNaN(pC)||pC<1||pC>100){alert("Please enter a number between 1 and 100.");return} const iAK=document.getElementById('answer-key-checkbox').checked; const iPN=document.getElementById('page-numbers-checkbox').checked; const bT=document.getElementById('book-title-input').value.trim(); const bS=document.getElementById('book-subtitle-input').value.trim(); ui.grid.innerHTML='';document.getElementById('instructions-container').style.visibility='hidden';isGeneratingBook=true;setUiLoading(true,"Preparing Book...");ui.loader.scrollIntoView({behavior:'smooth',block:'center'});document.getElementById('cancel-btn').style.display='block';document.getElementById('cancel-btn').disabled=false; const{jsPDF}=window.jspdf; const d=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'}); d.deletePage(1);const aPD=[]; try{ if(bT){d.addPage();const pW=d.internal.pageSize.getWidth(),pH=d.internal.pageSize.getHeight();d.setFont('helvetica','bold').setFontSize(30).text(bT,pW/2,pH/2-10,{align:'center'});if(bS)d.setFont('helvetica','normal').setFontSize(16).text(bS,pW/2,pH/2+5,{align:'center'})} for(let i=1;i<=pC;i++){ if(!isGeneratingBook){throw new Error("Cancelled")} ui.loaderText.textContent=`Generating Maze ${i} of ${pC}...`; const pD=await generatePuzzle(true);pD.title=`Maze ${i}`;aPD.push(pD); d.addPage();drawMazeOnPdfPage(d,pD,false,i,iPN)} if(iAK&&aPD.length>0){ ui.loaderText.textContent="Generating Maze Solutions...";await new Promise(r=>setTimeout(r,50));drawMazeSolutions(d,aPD)} const sT=(bT.replace(/[^a-zA-Z0-9]/g,'-')||`Maze-Book-${pC}-Mazes`).substring(0,50);d.save(`${sT}.pdf`);ui.status.textContent="Book successfully generated!"} catch(e){ if(e.message==="Cancelled")ui.status.textContent="Book generation cancelled."; else ui.status.textContent=`Error: ${e.message}`} finally{isGeneratingBook=false;setUiLoading(false);resetBookUI();triggerGeneratePuzzle()}}
+        async function downloadBook() { const pC=parseInt(document.getElementById('puzzle-count-input').value,10); if(isNaN(pC)||pC<1||pC>100){alert("Please enter a number between 1 and 100.");return} const iAK=document.getElementById('answer-key-checkbox').checked; const iPN=document.getElementById('page-numbers-checkbox').checked; const bT=document.getElementById('book-title-input').value.trim(); const bS=document.getElementById('book-subtitle-input').value.trim(); ui.grid.innerHTML='';document.getElementById('instructions-container').style.visibility='hidden';isGeneratingBook=true;setUiLoading(true,"Preparing Book...");ui.loader.scrollIntoView({behavior:'smooth',block:'center'});document.getElementById('cancel-btn').style.display='block';document.getElementById('cancel-btn').disabled=false; const{jsPDF}=window.jspdf; const d=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'}); d.deletePage(1);const aPD=[]; try{ if(bT){d.addPage();const pW=d.internal.pageSize.getWidth(),pH=d.internal.pageSize.getHeight();d.setFont('helvetica','bold').setFontSize(30).text(bT,pW/2,pH/2-10,{align:'center'});if(bS)d.setFont('helvetica','normal').setFontSize(16).text(bS,pW/2,pH/2+5,{align:'center'})} for(let i=1;i<=pC;i++){ if(!isGeneratingBook){throw new Error("Cancelled")} ui.loaderText.textContent=`Generating Maze ${i} of ${pC}...`; const pD=await generatePuzzle(true);pD.title=`Maze ${i}`;aPD.push(pD); d.addPage();drawMazeOnPdfPage(d,pD,false,i,iPN)} if(iAK&&aPD.length>0){ ui.loaderText.textContent="Generating Maze Solutions...";await new Promise(r=>setTimeout(r,50));drawMazeSolutions(d,aPD)} const sT=(bT.replace(/[^a-zA-Z0-9]/g,'-')||`Maze-Book-${pC}-Mazes`).substring(0,50);d.save(`${sT}.pdf`);ui.status.textContent="Book successfully generated!"} catch(e){ if(e.message==="Cancelled")ui.status.textContent="Book generation cancelled."; else ui.status.textContent=`Error: ${e.message}`} finally{isGeneratingBook=false;setUiLoading(false);setUIView('default');triggerGeneratePuzzle()}}
         function cancelBookGeneration() { isGeneratingBook=false; }
         function drawMazeOnPdfPage(d, pD, sS, pN, iPN) { const { grid: g, solution: s, title: t, start: pdfStart, end: pdfEnd, stars: pdfStars } = pD; const pW = d.internal.pageSize.getWidth(), pH = d.internal.pageSize.getHeight(), m = 15; let cY = m; d.setFont('helvetica', 'bold').setFontSize(16).text(t, pW / 2, cY, { align: 'center' }); cY += 15; const mS = 180, cG = g.length, cS = mS / cG; const sX = (pW - mS) / 2, sY = cY; if (sS) { d.setFillColor(255, 193, 7); s.forEach(p => d.rect(sX + p.x * cS, sY + p.y * cS, cS, cS, 'F')) } d.setFillColor(40, 167, 69).rect(sX + pdfStart.x * cS, sY + pdfStart.y * cS, cS, cS, 'F'); d.setFillColor(220, 53, 69).rect(sX + pdfEnd.x * cS, sY + pdfEnd.y * cS, cS, cS, 'F'); if (pdfStars && pdfStars.length > 0) { d.setFillColor(255, 193, 7); pdfStars.forEach(star => d.rect(sX + star.x * cS, sY + star.y * cS, cS, cS, 'F')); } d.setDrawColor(0).setLineWidth(.5); for (let y = 0; y < cG; y++) { for (let x = 0; x < cG; x++) { const c = g[y][x], cX = sX + x * cS, cY = sY + y * cS; if (c.walls[0]) d.line(cX, cY, cX + cS, cY); if (c.walls[1]) d.line(cX + cS, cY, cX + cS, cY + cS); if (c.walls[2]) d.line(cX, cY + cS, cX + cS, cY + cS); if (c.walls[3]) d.line(cX, cY, cX, cY + cS) } } if (iPN && pN) { d.setFont('helvetica', 'normal').setFontSize(8).text(String(pN), pW / 2, pH - m / 2, { align: 'center' }) } }
         function drawMazeSolutions(d,aPD){d.addPage();const pW=d.internal.pageSize.getWidth(),pH=d.internal.pageSize.getHeight(),m=15;d.setFont('helvetica','bold').setFontSize(20).text("Maze Solutions",pW/2,m,{align:'center'});const pPP=6,cols=2,rows=3;const bW=(pW-m*2)/cols,bH=(pH-m*2-10)/rows;aPD.forEach((pD,idx)=>{if(idx>0&&idx%pPP===0){d.addPage();d.setFont('helvetica','bold').setFontSize(20).text("Maze Solutions",pW/2,m,{align:'center'})}const i=idx%pPP;const col=i%cols,row=Math.floor(i/cols);const sBX=m+col*bW,sBY=m+10+row*bH;d.setFont('helvetica','bold').setFontSize(10).text(pD.title,sBX+bW/2,sBY+8,{align:'center'});const mS=Math.min(bW-10,bH-20),cG=pD.grid.length,cS=mS/cG;const sX=sBX+(bW-mS)/2,sY=sBY+12;d.setFillColor(255,193,7);pD.solution.forEach(p=>d.rect(sX+p.x*cS,sY+p.y*cS,cS,cS,'F'));d.setDrawColor(0).setLineWidth(.2);for(let y=0;y<cG;y++){for(let x=0;x<cG;x++){const c=pD.grid[y][x],cX=sX+x*cS,cY=sY+y*cS;if(c.walls[0])d.line(cX,cY,cX+cS,cY);if(c.walls[1])d.line(cX+cS,cY,cX+cS,cY+cS);if(c.walls[2])d.line(cX,cY+cS,cX+cS,cY+cS);if(c.walls[3])d.line(cX,cY,cX,cY+cS)}}})}
@@ -356,6 +394,7 @@
         const themeToggleBtn=document.getElementById('theme-toggle-btn');function setTheme(t){document.body.classList.toggle('dark-mode',t==='dark');localStorage.setItem('theme',t)}themeToggleBtn.addEventListener('click',()=>setTheme(document.body.classList.contains('dark-mode')?'light':'dark'));const savedTheme=localStorage.getItem('theme'),prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;setTheme(savedTheme||(prefersDark?'dark':'light'));
         
         document.addEventListener('DOMContentLoaded', () => {
+            // Maze Interaction
             ui.grid.addEventListener('mousedown',e=>{if(e.button===0)handleInteractionStart(e.target.closest('div[data-x]'))});
             ui.grid.addEventListener('mouseover',e=>handleInteractionMove(e.target.closest('div[data-x]')));
             document.addEventListener('mouseup',e=>{if(e.button===0)handleInteractionEnd()});
@@ -364,7 +403,30 @@
             ui.grid.addEventListener('touchend',handleInteractionEnd);
             ui.grid.addEventListener('touchcancel',handleInteractionEnd);
             document.addEventListener('keydown',handleKeyDown);
+            
+            // Seed buttons
+            ui.playSeedBtn.addEventListener('click', triggerGeneratePuzzle);
             ui.randomSeedBtn.addEventListener('click', () => { ui.seedInput.value = Date.now().toString(36); triggerGeneratePuzzle(); });
+
+            // Main Controls
+            ui.newRandomMazeBtn.addEventListener('click', () => { ui.seedInput.value = ''; triggerGeneratePuzzle(); });
+            ui.customMazeBtn.addEventListener('click', () => setUIView('custom'));
+            ui.revealBtn.addEventListener('click', revealSolution);
+            ui.downloadPdfBtn.addEventListener('click', downloadPdf);
+            ui.makeBookBtn.addEventListener('click', () => setUIView('book'));
+            
+            // Custom Maze Controls
+            ui.createPuzzleBtn.addEventListener('click', () => { triggerGeneratePuzzle(); setUIView('default'); });
+            ui.cancelCustomBtn.addEventListener('click', () => setUIView('default'));
+
+            // Book Controls
+            ui.createBookBtn.addEventListener('click', downloadBook);
+            ui.cancelBookOptionsBtn.addEventListener('click', () => setUIView('default'));
+
+            // Modal Controls
+            ui.playAgainBtn.addEventListener('click', () => { hideCompletionModal(); triggerGeneratePuzzle(); });
+
+            // Initial Setup
             triggerGeneratePuzzle();
             window.addEventListener('resize',()=>{if(currentGridState.length>0){clearTimeout(debounceTimeout);debounceTimeout=setTimeout(updateGridDisplay,100)}});
         });
