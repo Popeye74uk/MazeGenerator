@@ -209,7 +209,7 @@
 
         <div id="status-container"><p id="source-status"></p></div>
         <div id="game-mode-status"></div>
-        <div id="version-info">v0.21</div>
+        <div id="version-info">v0.22</div>
     </div>
 
     <div id="completion-modal" onclick="hideCompletionModal()">
@@ -326,7 +326,7 @@
                     puzzleConfigKey = `${gridSize}-${mazeType}-${seed}-${gameMode}`;
                     ui.status.textContent = `Type: ${ui.mazeTypeSelect.options[ui.mazeTypeSelect.selectedIndex].text}`;
                     updateInstructions();
-                    updateGridDisplay();
+                    updateGridDisplay(true);
                     document.getElementById('grid-wrapper').style.visibility = 'visible';
                     document.getElementById('instructions-container').style.visibility = 'visible'; 
                     startTime = Date.now();
@@ -381,10 +381,9 @@
         
         function updateCellDisplay(cell) { const { x, y, walls } = cell; if (!cell.domElement) cell.domElement = ui.grid.querySelector(`[data-x='${x}'][data-y='${y}']`); if (!cell.domElement) return; cell.domElement.className = ''; if (walls[0]) cell.domElement.classList.add('wall-top'); if (walls[1]) cell.domElement.classList.add('wall-right'); if (walls[2]) cell.domElement.classList.add('wall-bottom'); if (walls[3]) cell.domElement.classList.add('wall-left'); if (x === startCoords?.x && y === startCoords?.y) cell.domElement.classList.add('start-cell'); if (x === endCoords?.x && y === endCoords?.y) cell.domElement.classList.add('end-cell'); }
         
-        function updateGridDisplay() {
+        function updateGridDisplay(forceRedraw = false) {
             const isFullscreen = !!document.fullscreenElement;
             let containerSize;
-
             if (isFullscreen) {
                 containerSize = Math.min(window.innerWidth, window.innerHeight) - 40;
             } else {
@@ -404,17 +403,20 @@
                 #grid div.wall-bottom{border-bottom-width:${wallWidth}px;border-bottom-style:solid}
                 #grid div.wall-left{border-left-width:${wallWidth}px;border-left-style:solid}
                 #grid div.keyboard-cursor{box-shadow:inset 0 0 0 ${Math.max(2,wallWidth+1)}px var(--color-cursor-shadow)}`;
-
-            if (ui.grid.innerHTML === '') {
-                ui.grid.classList.toggle('blindfold-mode', gameMode === 'blindfold');
-                for (let y = 0; y < gridSize; y++) {
-                    for (let x = 0; x < gridSize; x++) {
-                        const c = document.createElement('div');
-                        c.dataset.x = x; c.dataset.y = y;
-                        const cD = currentGridState[y][x];
-                        cD.domElement = c;
-                        updateCellDisplay(cD);
-                        ui.grid.appendChild(c);
+            
+            if (forceRedraw) {
+                ui.grid.innerHTML = '';
+                if (currentGridState.length > 0) {
+                    ui.grid.classList.toggle('blindfold-mode', gameMode === 'blindfold');
+                    for (let y = 0; y < gridSize; y++) {
+                        for (let x = 0; x < gridSize; x++) {
+                            const c = document.createElement('div');
+                            c.dataset.x = x; c.dataset.y = y;
+                            const cD = currentGridState[y][x];
+                            cD.domElement = c;
+                            updateCellDisplay(cD);
+                            ui.grid.appendChild(c);
+                        }
                     }
                 }
             }
@@ -615,10 +617,10 @@
             document.addEventListener('fullscreenchange', () => {
                 if(currentGridState.length > 0) {
                      clearTimeout(debounceTimeout);
-                     debounceTimeout = setTimeout(() => updateGridDisplay(), 100);
+                     debounceTimeout = setTimeout(() => updateGridDisplay(true), 100);
                 }
             });
-            window.addEventListener('resize',()=>{if(currentGridState.length>0 && !document.fullscreenElement){clearTimeout(debounceTimeout);debounceTimeout=setTimeout(updateGridDisplay,100)}});
+            window.addEventListener('resize',()=>{if(currentGridState.length>0 && !document.fullscreenElement){clearTimeout(debounceTimeout);debounceTimeout=setTimeout(()=>updateGridDisplay(true),100)}});
 
             // Initial Setup
             ui.seedInput.value = ''; // Clear seed on load to ensure a new maze on refresh
