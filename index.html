@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Maze Generator v0.32</title>
+    <title>Maze Generator v0.33</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         :root{--color-background:#f8f9fa;--color-container-bg:#f8f9fa;--color-text-primary:#333;--color-text-secondary:#6c757d;--color-heading:#343a40;--color-grid-lines:#adb5bd;--color-grid-cell-bg:#fff;--color-button-disabled-bg:#6c757d;--color-spinner-track:#f3f3f3;--color-modal-bg:rgba(0,0,0,0.6);--color-modal-content-bg:white;--color-box-shadow:rgba(0,0,0,0.1);--color-box-shadow-hover:rgba(0,0,0,0.15);--color-primary:#007bff;--color-success:#28a745;--color-danger:#dc3545;--color-warning:#fd7e14;--color-info:#6f42c1;--color-pink:#d63384;--color-revealed-bg:rgba(40,167,69,0.3);--color-user-path-bg:rgba(0,123,255,0.3);--color-solved-path-bg:rgba(255,193,7,0.7);--color-start-bg:var(--color-success);--color-end-bg:var(--color-danger);--color-cursor-shadow:rgba(0,123,255,0.7); --color-board-bg: #121212;}
@@ -238,13 +238,13 @@
 
         <div id="status-container"><p id="source-status"></p></div>
         <div id="game-mode-status"></div>
-        <div id="version-info">v0.32</div>
+        <div id="version-info">v0.33</div>
     </div>
     
     <script>
         // --- GLOBAL VARIABLES & CONSTANTS ---
-        const MAX_BRAID_PERCENT = 40; // Max effective braiding is 40%
-        const MAX_SPROUT_PERCENT = 20; // Max effective sprouting is 20%
+        const MAX_BRAID_PERCENT = 40; 
+        const MAX_SPROUT_PERCENT = 20;
 
         let gridSize = 20;
         let currentGridState = [], solutionPath = [];
@@ -346,7 +346,7 @@
                 let path;
                 let currentMode = gameMode;
                 if (isForBook && currentMode === 'blindfold') {
-                    currentMode = 'default'; // Books can't be blindfold, so generate a default path
+                    currentMode = 'default';
                 }
 
                 if (currentMode === 'longest_path') {
@@ -354,7 +354,7 @@
                     startCoords = longestPathData.start;
                     endCoords = longestPathData.end;
                     path = longestPathData.path;
-                } else { // Covers 'default' and 'blindfold' for path generation
+                } else {
                     startCoords = { x: 0, y: 0 };
                     endCoords = { x: gridSize - 1, y: gridSize - 1 };
                     path = findSolutionPath(mazeGrid, startCoords, endCoords);
@@ -390,7 +390,10 @@
                 if (error.message !== "Animation cancelled") { ui.status.textContent = `Error: ${error.message}`; console.error(error); }
                 return null;
             } finally {
-                if (!isForBook) { setUiLoading(false); }
+                if (!isForBook) { 
+                    setUiLoading(false); 
+                    checkBookability(); // Re-check after enabling all buttons
+                }
             }
         }
 
