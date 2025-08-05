@@ -118,11 +118,8 @@
             </div>
         </div>
         <div id="instructions-container">
-            <h3>Instructions</h3>
-            <ul id="instructions-list">
-                <li>Click the start (green), then use the Arrow Keys to move.</li>
-                <li>Or, click and drag from the green square to the red square.</li>
-            </ul>
+            <h3 id="instructions-title">Instructions</h3>
+            <ul id="instructions-list"></ul>
         </div>
         
         <div class="seed-container">
@@ -257,7 +254,9 @@
             makeBookBtn: document.getElementById('make-book-btn'),
             createBookBtn: document.getElementById('create-book-btn'),
             cancelBookOptionsBtn: document.getElementById('cancel-book-options-btn'),
-            playAgainBtn: document.getElementById('play-again-btn')
+            playAgainBtn: document.getElementById('play-again-btn'),
+            instructionsTitle: document.getElementById('instructions-title'),
+            instructionsList: document.getElementById('instructions-list')
         };
         
         function cyrb128(str) { let h1=1779033703,h2=3144134277,h3=1013904242,h4=2773480762; for (let i=0,k;i<str.length;i++){k=str.charCodeAt(i);h1=h2^Math.imul(h1^k,597399067);h2=h3^Math.imul(h2^k,2869860233);h3=h4^Math.imul(h3^k,951274213);h4=h1^Math.imul(h4^k,2716044179)} h1=Math.imul(h3^(h1>>>18),597399067);h2=Math.imul(h4^(h2>>>22),2869860233);h3=Math.imul(h1^(h3>>>17),951274213);h4=Math.imul(h2^(h4>>>19),2716044179); return(h1^h2^h3^h4)>>>0 }
@@ -316,6 +315,7 @@
                     solutionPath = path;
                     puzzleConfigKey = `${gridSize}-${mazeType}-${seed}-${gameMode}`;
                     ui.status.textContent = `Type: ${ui.mazeTypeSelect.options[ui.mazeTypeSelect.selectedIndex].text}`;
+                    updateInstructions();
                     updateGridDisplay();
                     document.getElementById('grid-wrapper').style.visibility = 'visible';
                     document.getElementById('instructions-container').style.visibility = 'visible'; 
@@ -344,6 +344,30 @@
         function findAllDistances(grid, startCell) { const queue = [[startCell]]; const visited = new Set([`${startCell.x},${startCell.y}`]); let longestPath = [startCell]; while (queue.length > 0) { const path = queue.shift(); const currentCell = path[path.length - 1]; if (path.length > longestPath.length) { longestPath = path; } const cell = grid[currentCell.y][currentCell.x]; const directions = [{ x: 0, y: -1 }, { x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }]; for (let i = 0; i < directions.length; i++) { if (!cell.walls[i]) { const nX = currentCell.x + directions[i].x, nY = currentCell.y + directions[i].y; const key = `${nX},${nY}`; if (!visited.has(key)) { visited.add(key); const newPath = [...path, { x: nX, y: nY }]; queue.push(newPath); } } } } return { farthestCell: longestPath[longestPath.length - 1], path: longestPath }; }
         function findLongestPathEndpoints(grid) { const firstPass = findAllDistances(grid, grid[0][0]); const secondPass = findAllDistances(grid, firstPass.farthestCell); return { start: firstPass.farthestCell, end: secondPass.farthestCell, path: secondPass.path }; }
         
+        function updateInstructions() {
+            const selectedOption = ui.gameModeSelect.options[ui.gameModeSelect.selectedIndex];
+            ui.instructionsTitle.textContent = `Instructions - ${selectedOption.text}`;
+            let instructions = '';
+            switch (gameMode) {
+                case 'longest_path':
+                    instructions = `
+                        <li>Use the Arrow Keys to find the longest possible path between the two endpoints.</li>
+                        <li>Alternatively, click and drag from the start (green) to the end (red).</li>`;
+                    break;
+                case 'blindfold':
+                    instructions = `
+                        <li>Use the Arrow Keys to navigate. Your vision is limited to the immediate area.</li>
+                        <li>Try to find the end (red) with only a limited view of the maze.</li>`;
+                    break;
+                default: // 'default'
+                    instructions = `
+                        <li>Use the Arrow Keys to move from the start (green) to the end (red).</li>
+                        <li>Or, click and drag from the green square to the red square.</li>`;
+                    break;
+            }
+            ui.instructionsList.innerHTML = instructions;
+        }
+
         function setUiLoading(isLoading, message = '') { document.querySelectorAll('button, select, input').forEach(b=>b.disabled=isLoading); ui.loader.classList.toggle('hidden',!isLoading); ui.loaderText.textContent=message; document.getElementById('cancel-btn').style.display='none'; }
         
         function updateCellDisplay(cell) { const { x, y, walls } = cell; if (!cell.domElement) cell.domElement = ui.grid.querySelector(`[data-x='${x}'][data-y='${y}']`); if (!cell.domElement) return; cell.domElement.className = ''; if (walls[0]) cell.domElement.classList.add('wall-top'); if (walls[1]) cell.domElement.classList.add('wall-right'); if (walls[2]) cell.domElement.classList.add('wall-bottom'); if (walls[3]) cell.domElement.classList.add('wall-left'); if (x === startCoords?.x && y === startCoords?.y) cell.domElement.classList.add('start-cell'); if (x === endCoords?.x && y === endCoords?.y) cell.domElement.classList.add('end-cell'); }
@@ -380,7 +404,7 @@
         function handlePuzzleCompletion(elapsedTime) { const bestTime = localStorage.getItem(puzzleConfigKey); let isNewBest = false; if (bestTime === null || elapsedTime < parseInt(bestTime, 10)) { localStorage.setItem(puzzleConfigKey, elapsedTime); isNewBest = true; } document.getElementById('your-time').textContent = `Your time: ${formatTime(elapsedTime)}`; document.getElementById('best-time').textContent = `Best time: ${formatTime(localStorage.getItem(puzzleConfigKey))}`; document.getElementById('new-best-time').textContent = isNewBest ? 'New Best Time!' : ''; ui.completionModal.classList.add('visible'); ui.revealBtn.disabled = true; document.querySelectorAll('#grid div.user-path').forEach(c => { c.classList.remove('user-path'); c.classList.add('solved-path'); }); }
         function hideCompletionModal(){ui.completionModal.classList.remove('visible')}
 
-        const themeToggleBtn=document.getElementById('theme-toggle-btn');function setTheme(t){document.body.classList.toggle('dark-mode',t==='dark');localStorage.setItem('theme',t)}themeToggleBtn.addEventListener('click',()=>setTheme(document.body.classList.contains('dark-mode')?'light':'dark'));const savedTheme=localStorage.getItem('theme'),prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;setTheme(savedTheme||(prefersDark?'dark':'light'));
+        const themeToggleBtn=document.getElementById('theme-toggle-btn');function setTheme(t){document.body.classList.toggle('dark-mode',t==='dark');localStorage.setItem('theme',t)}themeToggleBtn.addEventListener('click',()=>setTheme(document.body.classList.contains('dark-mode')?'light':'dark'));const saved_theme=localStorage.getItem('theme'),prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;setTheme(saved_theme||(prefersDark?'dark':'light'));
         
         document.addEventListener('DOMContentLoaded', () => {
             // Maze Interaction
