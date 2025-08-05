@@ -416,6 +416,7 @@
             ui.playAgainBtn.addEventListener('click', () => { hideCompletionModal(); triggerGeneratePuzzle(); });
 
             // Initial Setup
+            ui.seedInput.value = ''; // Clear seed on load to ensure a new maze on refresh
             triggerGeneratePuzzle();
             window.addEventListener('resize',()=>{if(currentGridState.length>0){clearTimeout(debounceTimeout);debounceTimeout=setTimeout(updateGridDisplay,100)}});
         });
