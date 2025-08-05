@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Maze Generator v0.29</title>
+    <title>Maze Generator v0.30</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         :root{--color-background:#f8f9fa;--color-container-bg:#f8f9fa;--color-text-primary:#333;--color-text-secondary:#6c757d;--color-heading:#343a40;--color-grid-lines:#adb5bd;--color-grid-cell-bg:#fff;--color-button-disabled-bg:#6c757d;--color-spinner-track:#f3f3f3;--color-modal-bg:rgba(0,0,0,0.6);--color-modal-content-bg:white;--color-box-shadow:rgba(0,0,0,0.1);--color-box-shadow-hover:rgba(0,0,0,0.15);--color-primary:#007bff;--color-success:#28a745;--color-danger:#dc3545;--color-warning:#fd7e14;--color-info:#6f42c1;--color-pink:#d63384;--color-revealed-bg:rgba(40,167,69,0.3);--color-user-path-bg:rgba(0,123,255,0.3);--color-solved-path-bg:rgba(255,193,7,0.7);--color-start-bg:var(--color-success);--color-end-bg:var(--color-danger);--color-cursor-shadow:rgba(0,123,255,0.7); --color-board-bg: #121212;}
@@ -199,6 +199,13 @@
                     <span id="braiding-value">0%</span>
                 </div>
             </div>
+            <div class="option-group">
+                <label for="sprouting-slider">Sprouting:</label>
+                <div class="range-container">
+                    <input type="range" id="sprouting-slider" min="0" max="100" value="0">
+                    <span id="sprouting-value">0%</span>
+                </div>
+            </div>
             <div class="controls-grid" style="margin-top: 10px;">
                 <button id="create-puzzle-btn">Create Puzzle</button>
                 <button id="cancel-custom-btn">Cancel</button>
@@ -231,7 +238,7 @@
 
         <div id="status-container"><p id="source-status"></p></div>
         <div id="game-mode-status"></div>
-        <div id="version-info">v0.29</div>
+        <div id="version-info">v0.30</div>
     </div>
     
     <script>
@@ -279,7 +286,9 @@
             instructionsList: document.getElementById('instructions-list'),
             fullscreenBtn: document.getElementById('fullscreen-btn'),
             braidingSlider: document.getElementById('braiding-slider'),
-            braidingValue: document.getElementById('braiding-value')
+            braidingValue: document.getElementById('braiding-value'),
+            sproutingSlider: document.getElementById('sprouting-slider'),
+            sproutingValue: document.getElementById('sprouting-value')
         };
         
         function cyrb128(str) { let h1=1779033703,h2=3144134277,h3=1013904242,h4=2773480762; for (let i=0,k;i<str.length;i++){k=str.charCodeAt(i);h1=h2^Math.imul(h1^k,597399067);h2=h3^Math.imul(h2^k,2869860233);h3=h4^Math.imul(h3^k,951274213);h4=h1^Math.imul(h4^k,2716044179)} h1=Math.imul(h3^(h1>>>18),597399067);h2=Math.imul(h4^(h2>>>22),2869860233);h3=Math.imul(h1^(h3>>>17),951274213);h4=Math.imul(h2^(h4>>>19),2716044179); return(h1^h2^h3^h4)>>>0 }
@@ -294,6 +303,7 @@
             gridSize = parseInt(ui.gridSizeSelect.value, 10);
             const mazeType = ui.mazeTypeSelect.value;
             const braiding = parseInt(ui.braidingSlider.value, 10);
+            const sprouting = parseInt(ui.sproutingSlider.value, 10);
             gameMode = ui.gameModeSelect.value;
             let seed = ui.seedInput.value.trim() || Date.now().toString();
             if (isForBook && ui.seedInput.value.trim() === '') seed += Math.random();
@@ -322,6 +332,10 @@
                 if (braiding > 0) {
                     braidMaze(mazeGrid, braiding / 100);
                 }
+
+                if (sprouting > 0) {
+                    sproutMaze(mazeGrid, sprouting / 100);
+                }
                 
                 let path;
 
@@ -341,7 +355,7 @@
                 solutionPath = path;
 
                 if (!isForBook) {
-                    puzzleConfigKey = `${gridSize}-${mazeType}-${seed}-${gameMode}-${braiding}`;
+                    puzzleConfigKey = `${gridSize}-${mazeType}-${seed}-${gameMode}-${braiding}-${sprouting}`;
                     ui.status.textContent = `Type: ${ui.mazeTypeSelect.options[ui.mazeTypeSelect.selectedIndex].text}`;
                     updateInstructions();
                     updateGridDisplay(true);
@@ -357,7 +371,8 @@
                     mode: ui.gameModeSelect.options[ui.gameModeSelect.selectedIndex].text,
                     modeId: gameMode,
                     seed: seed,
-                    braiding: `${braiding}%`
+                    braiding: `${braiding}%`,
+                    sprouting: `${sprouting}%`
                 };
                 return puzzleData;
 
@@ -403,6 +418,54 @@
             }
         }
         
+        function sproutMaze(grid, percentage) {
+            if (percentage === 0) return;
+
+            const allCells = [];
+            for (let y = 0; y < grid.length; y++) {
+                for (let x = 0; x < grid[0].length; x++) {
+                    allCells.push(grid[y][x]);
+                }
+            }
+
+            for (let i = allCells.length - 1; i > 0; i--) {
+                const j = Math.floor(rng() * (i + 1));
+                [allCells[i], allCells[j]] = [allCells[j], allCells[i]];
+            }
+
+            const numToSprout = Math.floor(allCells.length * percentage);
+            let sproutedCount = 0;
+
+            for (const cell of allCells) {
+                if (sproutedCount >= numToSprout) break;
+
+                const walledNeighbors = [];
+                const dirs = [{x:0, y:-1}, {x:1, y:0}, {x:0, y:1}, {x:-1, y:0}];
+                
+                for(let i = 0; i < cell.walls.length; i++) {
+                    if(cell.walls[i]) {
+                        const nX = cell.x + dirs[i].x;
+                        const nY = cell.y + dirs[i].y;
+                        if (nX >= 0 && nX < grid[0].length && nY >= 0 && nY < grid.length) {
+                             // Check if the neighbor is already fully connected (not a good sprout candidate)
+                            const neighbor = grid[nY][nX];
+                            let neighborWallCount = 0;
+                            neighbor.walls.forEach(w => { if(w) neighborWallCount++; });
+                            if (neighborWallCount > 1) {
+                                walledNeighbors.push(neighbor);
+                            }
+                        }
+                    }
+                }
+
+                if (walledNeighbors.length > 0) {
+                    const neighbor = walledNeighbors[Math.floor(rng() * walledNeighbors.length)];
+                    removeWall(cell, neighbor);
+                    sproutedCount++;
+                }
+            }
+        }
+
         function createEmptyGrid(width, height) { return Array(height).fill(null).map((_, y) => Array(width).fill(null).map((_, x) => ({ x, y, walls: [true, true, true, true], visited: false }))); }
         function getNeighbors(cell, grid, allDirs = false) { const { x, y } = cell; const neighbors = []; const directions = [{x:0, y:-1}, {x:1, y:0}, {x:0, y:1}, {x:-1, y:0}]; for (const dir of directions) { const nX = x + dir.x, nY = y + dir.y; if (nX >= 0 && nX < grid[0].length && nY >= 0 && nY < grid.length) { const neighbor = grid[nY][nX]; if(allDirs || !neighbor.visited) neighbors.push(neighbor); } } return neighbors; }
         function removeWall(a, b) { const dX = a.x - b.x, dY = a.y - b.y; if (dX === 1) { a.walls[3] = false; b.walls[1] = false; } else if (dX === -1) { a.walls[1] = false; b.walls[3] = false; } if (dY === 1) { a.walls[0] = false; b.walls[2] = false; } else if (dY === -1) { a.walls[2] = false; b.walls[0] = false; } }
@@ -418,26 +481,14 @@
         
         function getInstructionsText(modeId) {
             const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-            
             const desktopMove = "Use the Arrow Keys to move from the start (green) to the end (red).";
             const desktopDrag = "Or, click and drag from the green square to the red square.";
             const mobileMove = "Swipe Up, Down, Left, or Right to move.";
-            
             let finalInstructions;
             switch (modeId) {
-                case 'longest_path':
-                    finalInstructions = isTouchDevice 
-                        ? `${mobileMove}\nFind the longest possible path between the two endpoints.`
-                        : `${desktopMove.replace(' from the start (green) to the end (red)','')}\nFind the longest possible path between the two endpoints.`;
-                    break;
-                case 'blindfold':
-                    finalInstructions = `Your vision is limited to the immediate area. Try to find the end (red).\n${isTouchDevice ? mobileMove : desktopMove.replace(' from the start (green) to the end (red)','')}`;
-                    break;
-                default: // 'start to end' mode
-                    finalInstructions = isTouchDevice 
-                        ? mobileMove 
-                        : `${desktopMove}\n${desktopDrag}`;
-                    break;
+                case 'longest_path': finalInstructions = isTouchDevice ? `${mobileMove}\nFind the longest possible path between the two endpoints.` : `${desktopMove.replace(' from the start (green) to the end (red)','')}\nFind the longest possible path between the two endpoints.`; break;
+                case 'blindfold': finalInstructions = `Your vision is limited to the immediate area. Try to find the end (red).\n${isTouchDevice ? mobileMove : desktopMove.replace(' from the start (green) to the end (red)','')}`; break;
+                default: finalInstructions = isTouchDevice ? mobileMove : `${desktopMove}\n${desktopDrag}`; break;
             }
             return finalInstructions;
         }
@@ -522,7 +573,8 @@
                     mode: ui.gameModeSelect.options[ui.gameModeSelect.selectedIndex].text,
                     modeId: gameMode,
                     seed: ui.seedInput.value,
-                    braiding: `${ui.braidingSlider.value}%`
+                    braiding: `${ui.braidingSlider.value}%`,
+                    sprouting: `${ui.sproutingSlider.value}%`
                 }
             };
             drawMazeOnPdfPage(doc, puzzleData, false, null, false);
@@ -626,6 +678,9 @@
                 ];
                 if (parseInt(metadata.braiding, 10) > 0) {
                     metadataLines.push(`Braiding: ${metadata.braiding}`);
+                }
+                 if (parseInt(metadata.sprouting, 10) > 0) {
+                    metadataLines.push(`Sprouting: ${metadata.sprouting}`);
                 }
                 d.text(metadataLines, pW/2, cY, {align: 'center'});
             }
@@ -741,6 +796,7 @@
             ui.createPuzzleBtn.addEventListener('click', () => { ui.seedInput.value = ''; triggerGeneratePuzzle(); setUIView('default'); });
             ui.cancelCustomBtn.addEventListener('click', () => setUIView('default'));
             ui.braidingSlider.addEventListener('input', () => { ui.braidingValue.textContent = `${ui.braidingSlider.value}%`; });
+            ui.sproutingSlider.addEventListener('input', () => { ui.sproutingValue.textContent = `${ui.sproutingSlider.value}%`; });
 
             // Book Controls
             ui.createBookBtn.addEventListener('click', downloadBook);
